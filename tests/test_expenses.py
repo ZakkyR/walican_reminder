@@ -58,5 +58,5 @@ def test_delete_expense_recalculates(auth_client, db, user):
     assert db.query(Payment).filter(Payment.event_id == event.id).count() == 1
 
     response = auth_client.delete(f"/events/{event.id}/expenses/{expense.id}", follow_redirects=False)
-    assert response.status_code in (200, 302, 303)
+    assert response.status_code in (200, 204, 302, 303)
     assert db.query(Payment).filter(Payment.event_id == event.id, Payment.status == PaymentStatus.pending).count() == 0

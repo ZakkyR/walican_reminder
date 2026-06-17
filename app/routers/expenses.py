@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Request, Depends, Form, HTTPException
+from fastapi import APIRouter, Request, Depends, Form, HTTPException, Response
 from fastapi.responses import RedirectResponse
 from fastapi.templating import Jinja2Templates
 from sqlalchemy.orm import Session
@@ -68,4 +68,6 @@ async def delete_expense(
     db.delete(expense)
     db.commit()
     apply_settlement(event_id, db)
-    return RedirectResponse(f"/events/{event_id}?tab=expenses", status_code=303)
+    response = Response(status_code=204)
+    response.headers["HX-Redirect"] = f"/events/{event_id}?tab=expenses"
+    return response
