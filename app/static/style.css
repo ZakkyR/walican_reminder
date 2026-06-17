@@ -1,0 +1,27 @@
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; background: #f5f7fa; color: #333; }
+.nav { background: #fff; border-bottom: 1px solid #e0e0e0; padding: 12px 20px; display: flex; justify-content: space-between; align-items: center; }
+.nav-brand { font-weight: bold; font-size: 1.1rem; text-decoration: none; color: #333; }
+.nav-links { display: flex; gap: 16px; align-items: center; }
+.nav-links a { text-decoration: none; color: #555; }
+.container { max-width: 800px; margin: 0 auto; padding: 20px; }
+.card { background: #fff; border-radius: 10px; padding: 16px; margin-bottom: 12px; box-shadow: 0 1px 4px rgba(0,0,0,0.08); }
+.card-title { font-size: 1rem; font-weight: 600; margin-bottom: 4px; }
+.badge { display: inline-block; padding: 2px 8px; border-radius: 12px; font-size: 0.75rem; }
+.badge-danger { background: #fff0f0; color: #d32f2f; }
+.badge-success { background: #f0fff4; color: #2e7d32; }
+.btn { display: inline-block; padding: 8px 16px; border-radius: 6px; border: none; cursor: pointer; font-size: 0.9rem; text-decoration: none; }
+.btn-primary { background: #5865f2; color: #fff; }
+.btn-discord { background: #5865f2; color: #fff; padding: 12px 24px; font-size: 1rem; }
+.btn-danger { background: #d32f2f; color: #fff; }
+.btn-secondary { background: #e0e0e0; color: #333; }
+.form-group { margin-bottom: 16px; }
+.form-group label { display: block; margin-bottom: 4px; font-size: 0.875rem; font-weight: 500; }
+.form-group input, .form-group select, .form-group textarea { width: 100%; padding: 8px 12px; border: 1px solid #ddd; border-radius: 6px; font-size: 0.9rem; }
+.tabs { display: flex; border-bottom: 2px solid #e0e0e0; margin-bottom: 20px; }
+.tab { padding: 8px 16px; cursor: pointer; border-bottom: 2px solid transparent; margin-bottom: -2px; }
+.tab.active { border-bottom-color: #5865f2; color: #5865f2; font-weight: 600; }
+.login-page { display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 100vh; gap: 16px; text-align: center; }
+.text-danger { color: #d32f2f; }
+.text-success { color: #2e7d32; }
+.page-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }

@@ -1,0 +1,30 @@
+{% extends "base.html" %}
+{% block title %}ホーム — Walican Reminder{% endblock %}
+{% block content %}
+<div class="page-header">
+  <h1>イベント一覧</h1>
+  <a href="/events/new" class="btn btn-primary">＋ イベント作成</a>
+</div>
+
+{% if events_with_stats %}
+  {% for item in events_with_stats %}
+    <a href="/events/{{ item.event.id }}" style="text-decoration:none; color:inherit;">
+      <div class="card">
+        <div class="card-title">{{ item.event.name }}</div>
+        {% if item.event.status.value == "completed" %}
+          <span class="badge badge-success">✓ 完了</span>
+        {% elif item.pending_count > 0 %}
+          <span class="badge badge-danger">● 未払い {{ item.pending_count }}件</span>
+        {% else %}
+          <span class="badge badge-success">✓ 全員支払済み</span>
+        {% endif %}
+        {% if item.event.payment_deadline %}
+          <div style="font-size:0.8rem; color:#888; margin-top:4px;">期限: {{ item.event.payment_deadline }}</div>
+        {% endif %}
+      </div>
+    </a>
+  {% endfor %}
+{% else %}
+  <p style="color:#888; text-align:center; margin-top:40px;">イベントがありません。「＋ イベント作成」から始めましょう。</p>
+{% endif %}
+{% endblock %}
