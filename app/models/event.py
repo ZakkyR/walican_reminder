@@ -15,11 +15,6 @@ class Event(Base):
     __tablename__ = "events"
 
     id: Mapped[str] = mapped_column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
-
-    def __init__(self, **kwargs):
-        if "id" not in kwargs:
-            kwargs["id"] = str(uuid.uuid4())
-        super().__init__(**kwargs)
     name: Mapped[str] = mapped_column(String(200))
     description: Mapped[str | None] = mapped_column(String(1000), nullable=True)
     payment_deadline: Mapped[date | None] = mapped_column(Date, nullable=True)
@@ -31,6 +26,11 @@ class Event(Base):
     participants: Mapped[list["EventParticipant"]] = relationship("EventParticipant", back_populates="event", cascade="all, delete-orphan")
     expenses: Mapped[list["Expense"]] = relationship("Expense", back_populates="event", cascade="all, delete-orphan")
     payments: Mapped[list["Payment"]] = relationship("Payment", back_populates="event", cascade="all, delete-orphan")
+
+    def __init__(self, **kwargs):
+        if "id" not in kwargs:
+            kwargs["id"] = str(uuid.uuid4())
+        super().__init__(**kwargs)
 
 
 class EventParticipant(Base):

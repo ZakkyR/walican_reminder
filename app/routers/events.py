@@ -1,3 +1,4 @@
+from datetime import date
 from fastapi import APIRouter, Request, Depends, Form, HTTPException
 from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
@@ -46,11 +47,9 @@ async def create_event(
     db: Session = Depends(get_db),
     user: User = Depends(get_current_user),
 ):
-    from datetime import date
     deadline = date.fromisoformat(payment_deadline) if payment_deadline else None
     event = Event(name=name, description=description, payment_deadline=deadline, created_by=user.id)
     db.add(event)
-    db.flush()
 
     participant_set = {user.id}
     if friend_group_id:
