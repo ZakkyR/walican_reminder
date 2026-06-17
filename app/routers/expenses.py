@@ -1,9 +1,8 @@
 from fastapi import APIRouter, Request, Depends, Form, HTTPException
-from fastapi.responses import HTMLResponse, RedirectResponse
+from fastapi.responses import RedirectResponse
 from fastapi.templating import Jinja2Templates
 from sqlalchemy.orm import Session
-from decimal import Decimal
-from typing import Optional
+from decimal import Decimal, InvalidOperation
 from app.database import get_db
 from app.routers.auth import get_current_user
 from app.routers.events import _require_participant
@@ -23,22 +22,31 @@ async def add_expense(
     total_amount: str = Form(...),
     paid_by: str = Form(...),
     participant_ids: list[str] = Form(...),
-    custom_amounts: list[str] = Form(default=[]),
     db: Session = Depends(get_db),
     user: User = Depends(get_current_user),
 ):
     _require_participant(event_id, user, db)
-    expense = Expense(
-        event_id=event_id,
-        title=title,
-        total_amount=Decimal(total_amount),
-        paid_by=paid_by,
-    )
+
+    try:
+        amount = Decimal(total_amount)
+        if amount <= 0:
+            raise ValueError
+    except (InvalidOperation, ValueError):
+        raise HTTPException(status_code=400, detail="金額が無効です")
+
+    expense = Expense(event_id=event_id, title=title, total_amount=amount, paid_by=paid_by)
     db.add(expense)
     db.flush()
 
-    for i, uid in enumerate(participant_ids):
-        custom = Decimal(custom_amounts[i]) if i < len(custom_amounts) and custom_amounts[i] else None
+    form_data = await request.form()
+    for uid in participant_ids:
+        custom_str = form_data.get(f"custom_{uid}", "")
+        custom = None
+        if custom_str:
+            try:
+                custom = Decimal(custom_str)
+            except InvalidOperation:
+                raise HTTPException(status_code=400, detail=f"カスタム金額が無効です: {custom_str}")
         db.add(ExpenseParticipant(expense_id=expense.id, user_id=uid, custom_amount=custom))
 
     db.commit()

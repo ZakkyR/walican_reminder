@@ -23,7 +23,7 @@
         <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px;">
           <input type="checkbox" name="participant_ids" value="{{ p.id }}" id="p_{{ p.id }}" checked>
           <label for="p_{{ p.id }}" style="margin:0;flex:1;">{{ p.discord_username }}</label>
-          <input type="number" name="custom_amounts" placeholder="カスタム金額" style="width:120px;">
+          <input type="number" name="custom_{{ p.id }}" placeholder="カスタム金額" style="width:120px;">
         </div>
       {% endfor %}
     </div>
@@ -42,15 +42,11 @@
           {% for ep in expense.participants %}{{ ep.user.discord_username }}{% if ep.custom_amount %}(¥{{ ep.custom_amount|int }}){% endif %}{% if not loop.last %}、{% endif %}{% endfor %}
         </div>
       </div>
-      <form method="post" action="/events/{{ event.id }}/expenses/{{ expense.id }}?_method=DELETE" style="display:inline;">
-        <input type="hidden" name="_method" value="DELETE">
-        <button type="submit" class="btn btn-danger" style="padding:4px 10px;font-size:0.8rem;"
-          onclick="return confirm('削除しますか？')"
-          hx-delete="/events/{{ event.id }}/expenses/{{ expense.id }}"
-          hx-confirm="削除しますか？"
-          hx-target="closest .card"
-          hx-swap="outerHTML">削除</button>
-      </form>
+      <button type="button" class="btn btn-danger" style="padding:4px 10px;font-size:0.8rem;"
+        hx-delete="/events/{{ event.id }}/expenses/{{ expense.id }}"
+        hx-confirm="削除しますか？"
+        hx-target="closest .card"
+        hx-swap="outerHTML">削除</button>
     </div>
   </div>
 {% else %}
