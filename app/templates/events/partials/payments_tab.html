@@ -1,1 +1,24 @@
-<div class="card"><p>（Tasks 9-11 で実装）</p></div>
+<h3 style="margin-bottom:12px;">精算状況</h3>
+{% set payments = event.payments %}
+{% if payments %}
+  {% for payment in payments %}
+    <div class="card" style="margin-bottom:8px;">
+      <div style="display:flex;justify-content:space-between;align-items:center;">
+        <div>
+          <span style="font-weight:600;">{{ payment.from_user.discord_username }}</span>
+          → {{ payment.to_user.discord_username }}
+          <span style="margin-left:8px;font-weight:600;">¥{{ "{:,}".format(payment.amount|int) }}</span>
+        </div>
+        <form method="post" action="/events/{{ event.id }}/payments/{{ payment.id }}/pay">
+          {% if payment.status.value == "paid" %}
+            <button type="submit" class="btn btn-secondary" style="padding:4px 12px;font-size:0.85rem;">✓ 支払済み</button>
+          {% else %}
+            <button type="submit" class="btn btn-primary" style="padding:4px 12px;font-size:0.85rem;">支払済みにする</button>
+          {% endif %}
+        </form>
+      </div>
+    </div>
+  {% endfor %}
+{% else %}
+  <p style="color:#888;">支出を追加すると精算額が表示されます。</p>
+{% endif %}
