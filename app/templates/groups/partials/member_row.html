@@ -1,0 +1,7 @@
+<div id="member-{{ member.id }}" style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid #f0f0f0;">
+  <span>{{ member.discord_username }}</span>
+  <button class="btn btn-danger" style="padding:2px 10px;font-size:0.8rem;"
+    hx-delete="/groups/{{ group.id }}/members/{{ member.id }}"
+    hx-target="#member-{{ member.id }}"
+    hx-swap="outerHTML">削除</button>
+</div>

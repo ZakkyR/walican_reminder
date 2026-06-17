@@ -1,0 +1,24 @@
+{% extends "base.html" %}
+{% block title %}仲間グループ — Walican Reminder{% endblock %}
+{% block content %}
+<div class="page-header">
+  <h1>仲間グループ</h1>
+</div>
+<div class="card">
+  <form method="post" action="/groups">
+    <div class="form-group">
+      <label>グループ名</label>
+      <input type="text" name="name" required placeholder="例: 旅行仲間">
+    </div>
+    <button type="submit" class="btn btn-primary">作成</button>
+  </form>
+</div>
+{% for group in groups %}
+  <a href="/groups/{{ group.id }}" style="text-decoration:none;color:inherit;">
+    <div class="card">
+      <div class="card-title">{{ group.name }}</div>
+      <div style="font-size:0.8rem;color:#888;">{{ group.members|length }}人</div>
+    </div>
+  </a>
+{% endfor %}
+{% endblock %}
