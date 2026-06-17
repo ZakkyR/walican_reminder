@@ -1,9 +1,11 @@
 from datetime import date
-from fastapi import APIRouter, Request, Depends, Form, HTTPException
-from fastapi.responses import HTMLResponse, RedirectResponse
+import httpx
+from fastapi import APIRouter, Depends, Form
+from fastapi.responses import RedirectResponse
 from fastapi.templating import Jinja2Templates
 from sqlalchemy.orm import Session
 from typing import Optional
+from app.config import settings
 from app.database import get_db
 from app.routers.auth import get_current_user
 from app.routers.events import _require_participant
@@ -50,8 +52,6 @@ async def send_now(
     db: Session = Depends(get_db),
     user: User = Depends(get_current_user),
 ):
-    from app.config import settings
-    import httpx
     _require_participant(event_id, user, db)
     if settings.functions_url and settings.functions_key:
         async with httpx.AsyncClient() as client:
