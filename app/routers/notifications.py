@@ -2,7 +2,6 @@ from datetime import date
 import httpx
 from fastapi import APIRouter, Depends, Form
 from fastapi.responses import RedirectResponse
-from fastapi.templating import Jinja2Templates
 from sqlalchemy.orm import Session
 from typing import Optional
 from app.config import settings
@@ -13,7 +12,6 @@ from app.models.user import User
 from app.models.notification import NotificationSetting, NotificationMode
 
 router = APIRouter(prefix="/events/{event_id}/notification")
-templates = Jinja2Templates(directory="app/templates")
 
 
 @router.post("")
