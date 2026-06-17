@@ -2,7 +2,7 @@ from fastapi import FastAPI
 from fastapi.staticfiles import StaticFiles
 from starlette.middleware.sessions import SessionMiddleware
 from app.config import settings
-from app.routers import auth, home, groups, events
+from app.routers import auth, home, groups, events, expenses
 
 app = FastAPI(title="Walican Reminder")
 app.add_middleware(SessionMiddleware, secret_key=settings.session_secret)
@@ -11,3 +11,4 @@ app.include_router(auth.router)
 app.include_router(home.router)
 app.include_router(groups.router)
 app.include_router(events.router)
+app.include_router(expenses.router)
