@@ -26,6 +26,7 @@ class Event(Base):
     participants: Mapped[list["EventParticipant"]] = relationship("EventParticipant", back_populates="event", cascade="all, delete-orphan")
     expenses: Mapped[list["Expense"]] = relationship("Expense", back_populates="event", cascade="all, delete-orphan")
     payments: Mapped[list["Payment"]] = relationship("Payment", back_populates="event", cascade="all, delete-orphan")
+    notification_setting: Mapped["NotificationSetting | None"] = relationship("NotificationSetting", back_populates="event", uselist=False)
 
     def __init__(self, **kwargs):
         if "id" not in kwargs:

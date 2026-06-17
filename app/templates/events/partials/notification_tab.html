@@ -1,1 +1,60 @@
-<div class="card"><p>（Tasks 9-11 で実装）</p></div>
+{% set ns = event.notification_setting if event.notification_setting else none %}
+<div class="card">
+  <h3 style="margin-bottom:16px;">通知設定</h3>
+  <form method="post" action="/events/{{ event.id }}/notification">
+    <div class="form-group">
+      <label>Discord チャンネル ID *</label>
+      <input type="text" name="discord_channel_id" required value="{{ ns.discord_channel_id if ns else '' }}" placeholder="例: 1234567890123456789">
+      <small style="color:#888;">チャンネルを右クリック → 「IDをコピー」</small>
+    </div>
+
+    <div class="form-group">
+      <label>通知モード *</label>
+      <select name="mode" id="mode-select" onchange="document.querySelectorAll('.mode-section').forEach(el=>el.style.display='none');document.getElementById('mode-'+this.value).style.display='block';">
+        <option value="scheduled" {% if ns and ns.mode.value == 'scheduled' %}selected{% endif %}>定期スケジュール</option>
+        <option value="deadline" {% if ns and ns.mode.value == 'deadline' %}selected{% endif %}>支払期限ベース</option>
+        <option value="from_date" {% if ns and ns.mode.value == 'from_date' %}selected{% endif %}>指定日以降</option>
+      </select>
+    </div>
+
+    <div id="mode-scheduled" class="mode-section" style="display:{% if not ns or ns.mode.value == 'scheduled' %}block{% else %}none{% endif %};">
+      <div class="form-group">
+        <label>Cron 式（例: <code>0 12 * * 1</code> = 毎週月曜12時）</label>
+        <input type="text" name="schedule_cron" value="{{ ns.schedule_cron if ns else '' }}" placeholder="0 12 * * 1">
+      </div>
+    </div>
+
+    <div id="mode-deadline" class="mode-section" style="display:{% if ns and ns.mode.value == 'deadline' %}block{% else %}none{% endif %};">
+      <div class="form-group">
+        <label>期限N日前から通知</label>
+        <input type="number" name="deadline_days_before" value="{{ ns.deadline_days_before if ns else 3 }}" min="0">
+      </div>
+      <div class="form-group">
+        <label>期限N日後まで通知</label>
+        <input type="number" name="deadline_days_after" value="{{ ns.deadline_days_after if ns else 7 }}" min="0">
+      </div>
+    </div>
+
+    <div id="mode-from_date" class="mode-section" style="display:{% if ns and ns.mode.value == 'from_date' %}block{% else %}none{% endif %};">
+      <div class="form-group">
+        <label>通知開始日</label>
+        <input type="date" name="notify_from_date" value="{{ ns.notify_from_date if ns else '' }}">
+      </div>
+      <div class="form-group">
+        <label>通知間隔（日）</label>
+        <input type="number" name="notify_interval_days" value="{{ ns.notify_interval_days if ns else 3 }}" min="1">
+      </div>
+    </div>
+
+    <button type="submit" class="btn btn-primary">保存</button>
+  </form>
+
+  {% if ns %}
+    <form method="post" action="/events/{{ event.id }}/notification/send-now" style="margin-top:16px;">
+      <button type="submit" class="btn btn-secondary">今すぐ通知を送信</button>
+    </form>
+    {% if ns.last_notified_at %}
+      <p style="font-size:0.8rem;color:#888;margin-top:8px;">最終通知: {{ ns.last_notified_at }}</p>
+    {% endif %}
+  {% endif %}
+</div>

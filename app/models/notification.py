@@ -26,4 +26,4 @@ class NotificationSetting(Base):
     notify_interval_days: Mapped[int | None] = mapped_column(Integer, nullable=True)
     last_notified_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
 
-    event: Mapped["Event"] = relationship("Event")
+    event: Mapped["Event"] = relationship("Event", back_populates="notification_setting")
