@@ -23,7 +23,7 @@ def test_mark_payment_as_paid(auth_client, db, user):
     assert payment.paid_at is not None
 
 def test_unmark_payment(auth_client, db, user):
-    from datetime import datetime
+    from datetime import datetime, timezone
     other = User(discord_id="011", discord_username="Payer2")
     db.add(other)
     event = Event(name="精算テスト2", created_by=user.id)
@@ -32,7 +32,7 @@ def test_unmark_payment(auth_client, db, user):
     db.add(EventParticipant(event_id=event.id, user_id=user.id))
     db.add(EventParticipant(event_id=event.id, user_id=other.id))
     payment = Payment(event_id=event.id, from_user_id=other.id, to_user_id=user.id,
-                      amount=Decimal(3000), status=PaymentStatus.paid, paid_at=datetime.utcnow())
+                      amount=Decimal(3000), status=PaymentStatus.paid, paid_at=datetime.now(timezone.utc))
     db.add(payment)
     db.commit()
     db.refresh(payment)

@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException
 from fastapi.responses import RedirectResponse
 from sqlalchemy.orm import Session
-from datetime import datetime
+from datetime import datetime, timezone
 from app.database import get_db
 from app.routers.auth import get_current_user
 from app.routers.events import _require_participant
@@ -24,7 +24,7 @@ async def toggle_payment(
 
     if payment.status == PaymentStatus.pending:
         payment.status = PaymentStatus.paid
-        payment.paid_at = datetime.utcnow()
+        payment.paid_at = datetime.now(timezone.utc)
     else:
         payment.status = PaymentStatus.pending
         payment.paid_at = None
