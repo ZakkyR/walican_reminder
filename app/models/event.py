@@ -15,6 +15,11 @@ class Event(Base):
     __tablename__ = "events"
 
     id: Mapped[str] = mapped_column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
+
+    def __init__(self, **kwargs):
+        if "id" not in kwargs:
+            kwargs["id"] = str(uuid.uuid4())
+        super().__init__(**kwargs)
     name: Mapped[str] = mapped_column(String(200))
     description: Mapped[str | None] = mapped_column(String(1000), nullable=True)
     payment_deadline: Mapped[date | None] = mapped_column(Date, nullable=True)
