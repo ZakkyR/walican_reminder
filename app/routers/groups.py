@@ -121,7 +121,7 @@ async def add_member(
     db.refresh(group)
     return templates.TemplateResponse(
         "groups/partials/member_row.html",
-        {"request": request, "member": target, "group": group, "is_owner": True},
+        {"request": request, "member": target, "group": group, "is_owner": True, "user": user},
     )
 
 
