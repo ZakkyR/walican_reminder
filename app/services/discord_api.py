@@ -47,3 +47,16 @@ def get_guild_members(guild_id: str, bot_token: str) -> list[dict]:
             ),
         })
     return members
+
+
+def get_member_nick(guild_id: str, discord_id: str, bot_token: str) -> str | None:
+    """Returns server nickname for a specific user in a guild, or None if no nick/not found."""
+    try:
+        resp = httpx.get(
+            f"{_DISCORD_API}/guilds/{guild_id}/members/{discord_id}",
+            headers={"Authorization": f"Bot {bot_token}"},
+        )
+        resp.raise_for_status()
+        return resp.json().get("nick") or None
+    except httpx.HTTPStatusError:
+        return None

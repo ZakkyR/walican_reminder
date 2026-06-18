@@ -39,6 +39,7 @@ class EventParticipant(Base):
 
     event_id: Mapped[str] = mapped_column(String(36), ForeignKey("events.id"), primary_key=True)
     user_id: Mapped[str] = mapped_column(String(36), ForeignKey("users.id"), primary_key=True)
+    display_name: Mapped[str | None] = mapped_column(Unicode(100), nullable=True)
 
     event: Mapped["Event"] = relationship("Event", back_populates="participants")
     user: Mapped["User"] = relationship("User")

@@ -5,8 +5,8 @@
     <div class="card" style="margin-bottom:8px;">
       <div style="display:flex;justify-content:space-between;align-items:center;">
         <div>
-          <span style="font-weight:600;">{{ payment.from_user.discord_username }}</span>
-          → {{ payment.to_user.discord_username }}
+          <span style="font-weight:600;">{{ display_names.get(payment.from_user.id, payment.from_user.discord_username) }}</span>
+          → {{ display_names.get(payment.to_user.id, payment.to_user.discord_username) }}
           <span style="margin-left:8px;font-weight:600;">¥{{ "{:,}".format(payment.amount|int) }}</span>
         </div>
         <form method="post" action="/events/{{ event.id }}/payments/{{ payment.id }}/pay">

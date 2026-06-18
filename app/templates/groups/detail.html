@@ -42,7 +42,7 @@
       <input type="text" id="member-name-input" name="name" placeholder="名前（Discord未登録の方も入力可）" style="flex:1;padding:8px;border:1px solid #ddd;border-radius:6px;">
       <button type="submit" class="btn btn-primary">追加</button>
     </form>
-    {% with picker_id="group-detail" %}
+    {% with picker_id="group-detail", context_param="&group_id=" + group.id %}
       {% include "partials/guild_picker.html" %}
     {% endwith %}
   {% endif %}

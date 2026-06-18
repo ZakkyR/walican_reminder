@@ -4,7 +4,7 @@
   <div style="margin-top:8px;">
     <select id="guild-select-{{ picker_id }}"
             style="width:100%;padding:6px 8px;border:1px solid #ddd;border-radius:6px;font-size:0.9rem;"
-            onchange="htmx.ajax('GET', '/api/server-members?guild_id=' + this.value, {target: '#server-member-list-{{ picker_id }}', swap: 'innerHTML'})">
+            onchange="htmx.ajax('GET', '/api/server-members?guild_id=' + this.value + '{{ context_param | default("") }}', {target: '#server-member-list-{{ picker_id }}', swap: 'innerHTML'})">
       <option value="">サーバーを選択...</option>
       {% for guild in user_guilds %}
         <option value="{{ guild.guild_id }}">{{ guild.guild_name }}</option>

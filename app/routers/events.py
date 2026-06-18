@@ -232,10 +232,15 @@ async def event_detail(event_id: str, request: Request, tab: str = "expenses", d
     event = _require_participant(event_id, user, db)
     participants = [p.user for p in event.participants]
     is_creator = event.created_by == user.id
+    display_names = {
+        ep.user_id: ep.display_name or ep.user.discord_username
+        for ep in event.participants
+    }
     return templates.TemplateResponse(request, "events/detail.html", {
         "user": user, "event": event,
         "participants": participants, "tab": tab,
         "is_creator": is_creator,
+        "display_names": display_names,
     })
 
 
@@ -244,10 +249,34 @@ async def edit_event_form(event_id: str, request: Request, db: Session = Depends
     event = _require_event_creator(event_id, user, db)
     participants = [p.user for p in event.participants]
     user_guilds = db.query(UserGuild).join(BotGuild, BotGuild.guild_id == UserGuild.guild_id).filter(UserGuild.user_id == user.id).all()
+    my_ep = db.query(EventParticipant).filter(
+        EventParticipant.event_id == event_id,
+        EventParticipant.user_id == user.id,
+    ).first()
+    my_display_name = my_ep.display_name if my_ep else None
     return templates.TemplateResponse(request, "events/edit.html", {
         "user": user, "event": event, "participants": participants,
         "user_guilds": user_guilds,
+        "my_display_name": my_display_name,
     })
+
+
+@router.post("/{event_id}/my-display-name")
+async def set_my_display_name(
+    event_id: str,
+    display_name: str = Form(...),
+    db: Session = Depends(get_db),
+    user: User = Depends(get_current_user),
+):
+    _require_participant(event_id, user, db)
+    ep = db.query(EventParticipant).filter(
+        EventParticipant.event_id == event_id,
+        EventParticipant.user_id == user.id,
+    ).first()
+    if ep:
+        ep.display_name = display_name.strip() or None
+        db.commit()
+    return RedirectResponse(f"/events/{event_id}/edit", status_code=303)
 
 
 @router.post("/{event_id}/edit")

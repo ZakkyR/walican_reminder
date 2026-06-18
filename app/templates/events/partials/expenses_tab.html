@@ -13,7 +13,7 @@
       <label>立替者 *</label>
       <select name="paid_by" required>
         {% for p in participants %}
-          <option value="{{ p.id }}">{{ p.discord_username }}</option>
+          <option value="{{ p.id }}">{{ display_names.get(p.id, p.discord_username) }}</option>
         {% endfor %}
       </select>
     </div>
@@ -23,11 +23,11 @@
         <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;">
           <input type="checkbox" name="participant_ids" value="{{ p.id }}" id="p_{{ p.id }}" checked style="width:auto;flex-shrink:0;">
           {% if p.discord_avatar_url %}
-            <img src="{{ p.discord_avatar_url }}" class="avatar" alt="{{ p.discord_username }}">
+            <img src="{{ p.discord_avatar_url }}" class="avatar" alt="{{ display_names.get(p.id, p.discord_username) }}">
           {% else %}
-            <span class="avatar-placeholder">{{ p.discord_username[0]|upper }}</span>
+            <span class="avatar-placeholder">{{ display_names.get(p.id, p.discord_username)[0]|upper }}</span>
           {% endif %}
-          <label for="p_{{ p.id }}" style="margin:0;flex:1;">{{ p.discord_username }}</label>
+          <label for="p_{{ p.id }}" style="margin:0;flex:1;">{{ display_names.get(p.id, p.discord_username) }}</label>
           <input type="number" name="custom_{{ p.id }}" placeholder="カスタム金額" style="width:110px;">
         </div>
       {% endfor %}
@@ -42,9 +42,9 @@
     <div style="display:flex;justify-content:space-between;align-items:center;">
       <div>
         <div class="card-title">{{ expense.title }}</div>
-        <div style="font-size:0.85rem;color:#888;">¥{{ "{:,}".format(expense.total_amount|int) }} — 立替: {{ expense.payer.discord_username }}</div>
+        <div style="font-size:0.85rem;color:#888;">¥{{ "{:,}".format(expense.total_amount|int) }} — 立替: {{ display_names.get(expense.paid_by, expense.payer.discord_username) }}</div>
         <div style="font-size:0.8rem;color:#aaa;">
-          {% for ep in expense.participants %}{{ ep.user.discord_username }}{% if ep.custom_amount %}(¥{{ ep.custom_amount|int }}){% endif %}{% if not loop.last %}、{% endif %}{% endfor %}
+          {% for ep in expense.participants %}{{ display_names.get(ep.user.id, ep.user.discord_username) }}{% if ep.custom_amount %}(¥{{ ep.custom_amount|int }}){% endif %}{% if not loop.last %}、{% endif %}{% endfor %}
         </div>
       </div>
       <button type="button" class="btn btn-danger" style="padding:4px 10px;font-size:0.8rem;"

@@ -36,8 +36,46 @@
     <input type="text" id="member-name-input" name="name" placeholder="名前（Discord未登録の方も入力可）" style="flex:1;padding:8px;border:1px solid #ddd;border-radius:6px;">
     <button type="submit" class="btn btn-primary">追加</button>
   </form>
-  {% with picker_id="event-edit" %}
+  {% with picker_id="event-edit", context_param="&event_id=" + event.id %}
     {% include "partials/guild_picker.html" %}
   {% endwith %}
 </div>
+
+<div class="card" style="margin-top:16px;">
+  <h3 style="margin-bottom:8px;">自分の表示名</h3>
+  <p style="font-size:0.85rem;color:#888;margin-bottom:12px;">
+    このイベントでの自分の名前を設定します。未設定の場合は Discord ユーザー名が使われます。
+  </p>
+  <form method="post" action="/events/{{ event.id }}/my-display-name" style="display:flex;flex-direction:column;gap:10px;">
+    {% if user_guilds %}
+      <select onchange="fetchMyNick(this.value)"
+              style="padding:6px 8px;border:1px solid #ddd;border-radius:6px;font-size:0.9rem;">
+        <option value="">サーバーのニックネームを取得...</option>
+        {% for guild in user_guilds %}
+          <option value="{{ guild.guild_id }}">{{ guild.guild_name }}</option>
+        {% endfor %}
+      </select>
+    {% endif %}
+    <div style="display:flex;gap:8px;">
+      <input type="text" id="my-display-name-input" name="display_name"
+             value="{{ my_display_name or user.discord_username }}"
+             placeholder="表示名"
+             style="flex:1;padding:8px;border:1px solid #ddd;border-radius:6px;">
+      <button type="submit" class="btn btn-primary">設定</button>
+    </div>
+  </form>
+</div>
+
+<script>
+async function fetchMyNick(guildId) {
+  if (!guildId) return;
+  try {
+    const r = await fetch('/api/my-nickname?guild_id=' + encodeURIComponent(guildId));
+    if (r.ok) {
+      const nick = await r.text();
+      if (nick) document.getElementById('my-display-name-input').value = nick;
+    }
+  } catch (e) {}
+}
+</script>
 {% endblock %}
