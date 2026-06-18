@@ -1,5 +1,5 @@
 from fastapi import APIRouter, Request, Depends, Form, HTTPException, Response
-from fastapi.responses import RedirectResponse
+from fastapi.responses import RedirectResponse, HTMLResponse
 from fastapi.templating import Jinja2Templates
 from sqlalchemy.orm import Session
 from decimal import Decimal, InvalidOperation
@@ -93,8 +93,6 @@ async def edit_expense_form(
     db: Session = Depends(get_db),
     user: User = Depends(get_current_user),
 ):
-    from fastapi.responses import HTMLResponse
-    from app.models.event import EventParticipant
     _require_participant(event_id, user, db)
     expense = db.get(Expense, expense_id)
     if not expense or expense.event_id != event_id:
