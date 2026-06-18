@@ -1,7 +1,7 @@
 import uuid
 import enum
 from datetime import datetime, date
-from sqlalchemy import String, DateTime, Date, ForeignKey, Enum
+from sqlalchemy import String, Unicode, DateTime, Date, ForeignKey, Enum
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from app.database import Base
 
@@ -15,8 +15,8 @@ class Event(Base):
     __tablename__ = "events"
 
     id: Mapped[str] = mapped_column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
-    name: Mapped[str] = mapped_column(String(200))
-    description: Mapped[str | None] = mapped_column(String(1000), nullable=True)
+    name: Mapped[str] = mapped_column(Unicode(200))
+    description: Mapped[str | None] = mapped_column(Unicode(1000), nullable=True)
     payment_deadline: Mapped[date | None] = mapped_column(Date, nullable=True)
     created_by: Mapped[str] = mapped_column(String(36), ForeignKey("users.id"))
     status: Mapped[EventStatus] = mapped_column(Enum(EventStatus, native_enum=False), default=EventStatus.active)
