@@ -7,8 +7,8 @@ def test_server_members_returns_member_list(auth_client, db, user):
     db.commit()
 
     members = [
-        {"discord_id": "u1", "username": "Alice", "avatar_url": None},
-        {"discord_id": "u2", "username": "Bob", "avatar_url": "https://cdn.discordapp.com/avatars/u2/x.png"},
+        {"discord_id": "u1", "username": "Alice", "display_name": "Alice", "avatar_url": None},
+        {"discord_id": "u2", "username": "Bob", "display_name": "Bobby", "avatar_url": "https://cdn.discordapp.com/avatars/u2/x.png"},
     ]
     with patch("app.routers.api.get_guild_members", return_value=members):
         response = auth_client.get("/api/server-members?guild_id=guild123")

@@ -16,7 +16,10 @@ def get_user_guilds(access_token: str) -> list[dict]:
 def get_guild_members(guild_id: str, bot_token: str) -> list[dict]:
     """Fetch members of a guild via Bot token.
     Requires GUILD_MEMBERS privileged intent in Discord Developer Portal.
-    Returns list of {"discord_id": str, "username": str, "avatar_url": str | None}.
+    Returns list of:
+      {"discord_id": str, "username": str, "display_name": str, "avatar_url": str | None}
+    username  = global Discord username (matches discord_username in DB)
+    display_name = server nickname if set, otherwise username
     Returns [] on HTTP error (e.g. 403 if intent not enabled).
     """
     try:
@@ -36,7 +39,8 @@ def get_guild_members(guild_id: str, bot_token: str) -> list[dict]:
         avatar = user.get("avatar")
         members.append({
             "discord_id": user["id"],
-            "username": m.get("nick") or user["username"],
+            "username": user["username"],
+            "display_name": m.get("nick") or user["username"],
             "avatar_url": (
                 f"https://cdn.discordapp.com/avatars/{user['id']}/{avatar}.png"
                 if avatar else None

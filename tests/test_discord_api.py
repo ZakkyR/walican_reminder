@@ -30,9 +30,12 @@ def test_get_guild_members_returns_member_list():
     assert result[0] == {
         "discord_id": "u1",
         "username": "Alice",
+        "display_name": "Alice",
         "avatar_url": "https://cdn.discordapp.com/avatars/u1/abc123.png",
     }
-    assert result[1]["username"] == "Bobby"
+    # global username is preserved; nick becomes display_name
+    assert result[1]["username"] == "Bob"
+    assert result[1]["display_name"] == "Bobby"
     assert result[1]["avatar_url"] is None
 
 
