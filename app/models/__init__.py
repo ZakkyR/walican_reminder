@@ -5,6 +5,7 @@ from app.models.expense import Expense, ExpenseParticipant
 from app.models.payment import Payment, PaymentStatus
 from app.models.notification import NotificationSetting, NotificationMode
 from app.models.user_guild import UserGuild
+from app.models.bot_guild import BotGuild
 
 __all__ = [
     "User", "FriendGroup", "FriendGroupMember",
@@ -12,5 +13,5 @@ __all__ = [
     "Expense", "ExpenseParticipant",
     "Payment", "PaymentStatus",
     "NotificationSetting", "NotificationMode",
-    "UserGuild",
+    "UserGuild", "BotGuild",
 ]

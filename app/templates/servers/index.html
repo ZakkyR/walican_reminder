@@ -7,17 +7,21 @@
 
 {% if user_guilds %}
   <p style="font-size:0.85rem;color:#888;margin-bottom:16px;">
-    ログイン中のあなたが参加しているサーバーの一覧です。Bot を招待すると、イベント編集時にサーバーのメンバーを素早く追加できます。
+    参加しているサーバーの一覧です。Bot を招待すると、イベント編集時にサーバーのメンバーを素早く追加できます。
   </p>
   {% for guild in user_guilds %}
     <div class="card" style="display:flex;align-items:center;justify-content:space-between;gap:12px;">
       <span style="font-weight:500;">{{ guild.guild_name }}</span>
-      <a href="https://discord.com/oauth2/authorize?client_id={{ discord_client_id | e }}&scope=bot&permissions=0&guild_id={{ guild.guild_id | e }}"
-         target="_blank" rel="noopener noreferrer"
-         class="btn btn-secondary"
-         style="white-space:nowrap;font-size:0.85rem;">
-        Bot を招待
-      </a>
+      {% if guild.guild_id in bot_guild_ids %}
+        <span class="badge badge-success">✓ Bot 参加済み</span>
+      {% else %}
+        <a href="https://discord.com/oauth2/authorize?client_id={{ discord_client_id | e }}&scope=bot&permissions=0&guild_id={{ guild.guild_id | e }}&redirect_uri={{ callback_uri_encoded }}&response_type=code"
+           target="_blank" rel="noopener noreferrer"
+           class="btn btn-secondary"
+           style="white-space:nowrap;font-size:0.85rem;">
+          Bot を招待
+        </a>
+      {% endif %}
     </div>
   {% endfor %}
 {% else %}
