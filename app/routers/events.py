@@ -1,5 +1,5 @@
 from datetime import date
-from fastapi import APIRouter, Request, Depends, Form, HTTPException
+from fastapi import APIRouter, Request, Depends, Form, HTTPException, Response
 from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
 from sqlalchemy.orm import Session
@@ -27,10 +27,24 @@ def _require_participant(event_id: str, user: User, db: Session) -> Event:
     return event
 
 
+def _require_event_creator(event_id: str, user: User, db: Session) -> Event:
+    event = db.get(Event, event_id)
+    if not event:
+        raise HTTPException(status_code=404)
+    if event.created_by != user.id:
+        raise HTTPException(status_code=403)
+    return event
+
+
 @router.get("/new", response_class=HTMLResponse)
 async def new_event_form(request: Request, db: Session = Depends(get_db), user: User = Depends(get_current_user)):
-    groups = db.query(FriendGroup).filter(FriendGroup.created_by == user.id).all()
-    all_users = db.query(User).filter(User.id != user.id).all()
+    groups = (
+        db.query(FriendGroup)
+        .join(FriendGroupMember, FriendGroupMember.friend_group_id == FriendGroup.id)
+        .filter(FriendGroupMember.user_id == user.id)
+        .all()
+    )
+    all_users = db.query(User).filter(User.id != user.id).order_by(User.is_guest, User.discord_username).all()
     return templates.TemplateResponse(request, "events/new.html", {
         "user": user, "groups": groups, "all_users": all_users,
     })
@@ -67,10 +81,45 @@ async def create_event(
 async def event_detail(event_id: str, request: Request, tab: str = "expenses", db: Session = Depends(get_db), user: User = Depends(get_current_user)):
     event = _require_participant(event_id, user, db)
     participants = [p.user for p in event.participants]
+    is_creator = event.created_by == user.id
     return templates.TemplateResponse(request, "events/detail.html", {
         "user": user, "event": event,
         "participants": participants, "tab": tab,
+        "is_creator": is_creator,
     })
+
+
+@router.get("/{event_id}/edit", response_class=HTMLResponse)
+async def edit_event_form(event_id: str, request: Request, db: Session = Depends(get_db), user: User = Depends(get_current_user)):
+    event = _require_event_creator(event_id, user, db)
+    return templates.TemplateResponse(request, "events/edit.html", {"user": user, "event": event})
+
+
+@router.post("/{event_id}/edit")
+async def update_event(
+    event_id: str,
+    name: str = Form(...),
+    description: Optional[str] = Form(None),
+    payment_deadline: Optional[str] = Form(None),
+    db: Session = Depends(get_db),
+    user: User = Depends(get_current_user),
+):
+    event = _require_event_creator(event_id, user, db)
+    event.name = name
+    event.description = description or None
+    event.payment_deadline = date.fromisoformat(payment_deadline) if payment_deadline else None
+    db.commit()
+    return RedirectResponse(f"/events/{event_id}", status_code=303)
+
+
+@router.delete("/{event_id}")
+async def delete_event(event_id: str, db: Session = Depends(get_db), user: User = Depends(get_current_user)):
+    event = _require_event_creator(event_id, user, db)
+    db.delete(event)
+    db.commit()
+    response = Response(status_code=204)
+    response.headers["HX-Redirect"] = "/"
+    return response
 
 
 @router.post("/{event_id}/complete")

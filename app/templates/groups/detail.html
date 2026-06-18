@@ -3,16 +3,28 @@
 {% block content %}
 <div class="page-header">
   <h1>{{ group.name }}</h1>
-  <a href="/groups" class="btn btn-secondary">← 戻る</a>
+  <div style="display:flex;gap:8px;">
+    {% if is_owner %}
+      <button class="btn btn-danger"
+        hx-delete="/groups/{{ group.id }}"
+        hx-confirm="グループ「{{ group.name }}」を削除しますか？"
+        hx-target="body"
+        hx-push-url="/">削除</button>
+    {% endif %}
+    <a href="/groups" class="btn btn-secondary">← 戻る</a>
+  </div>
 </div>
 
 <div class="card">
   <h3 style="margin-bottom:12px;">メンバー</h3>
   <div id="member-list">
     {% for member in members %}
-      <div id="member-{{ member.id }}" style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid #f0f0f0;">
-        <span>{{ member.discord_username }}</span>
-        {% if member.id != user.id %}
+      <div id="member-{{ member.id }}" style="display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid #f0f0f0;">
+        <span>
+          {{ member.discord_username }}
+          {% if member.is_guest %}<span class="badge" style="background:#f0f0f0;color:#888;font-size:0.7rem;margin-left:4px;">未ログイン</span>{% endif %}
+        </span>
+        {% if is_owner and member.id != user.id %}
           <button class="btn btn-danger" style="padding:2px 10px;font-size:0.8rem;"
             hx-delete="/groups/{{ group.id }}/members/{{ member.id }}"
             hx-target="#member-{{ member.id }}"
@@ -22,9 +34,11 @@
     {% endfor %}
   </div>
 
-  <form hx-post="/groups/{{ group.id }}/members" hx-target="#member-list" hx-swap="beforeend" style="margin-top:12px;display:flex;gap:8px;">
-    <input type="text" name="username" placeholder="Discord ユーザー名" style="flex:1;padding:8px;border:1px solid #ddd;border-radius:6px;">
-    <button type="submit" class="btn btn-primary">追加</button>
-  </form>
+  {% if is_owner %}
+    <form hx-post="/groups/{{ group.id }}/members" hx-target="#member-list" hx-swap="beforeend" style="margin-top:12px;display:flex;gap:8px;">
+      <input type="text" name="name" placeholder="名前（Discord未登録の方も入力可）" style="flex:1;padding:8px;border:1px solid #ddd;border-radius:6px;">
+      <button type="submit" class="btn btn-primary">追加</button>
+    </form>
+  {% endif %}
 </div>
 {% endblock %}
