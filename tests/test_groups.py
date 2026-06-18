@@ -7,6 +7,12 @@ def test_create_group(auth_client, db, user):
     group = db.query(FriendGroup).filter(FriendGroup.name == "旅行仲間").first()
     assert group is not None
     assert group.created_by == user.id
+    # 作成者が自動的にメンバーに追加されていることを確認
+    member = db.query(FriendGroupMember).filter(
+        FriendGroupMember.friend_group_id == group.id,
+        FriendGroupMember.user_id == user.id,
+    ).first()
+    assert member is not None
 
 
 def test_add_member_to_group(auth_client, db, user):
@@ -18,7 +24,7 @@ def test_add_member_to_group(auth_client, db, user):
     db.commit()
     db.refresh(group)
 
-    response = auth_client.post(f"/groups/{group.id}/members", data={"username": "OtherUser"}, follow_redirects=False)
+    response = auth_client.post(f"/groups/{group.id}/members", data={"name": "OtherUser"}, follow_redirects=False)
     assert response.status_code in (200, 302, 303)
     member = db.query(FriendGroupMember).filter(
         FriendGroupMember.friend_group_id == group.id,

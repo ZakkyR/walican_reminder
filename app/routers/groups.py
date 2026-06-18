@@ -14,8 +14,10 @@ templates = Jinja2Templates(directory="app/templates")
 
 def _require_group_owner(group_id: str, user: User, db: Session) -> FriendGroup:
     group = db.get(FriendGroup, group_id)
-    if not group or group.created_by != user.id:
+    if not group:
         raise HTTPException(status_code=404)
+    if group.created_by != user.id:
+        raise HTTPException(status_code=403)
     return group
 
 
@@ -31,13 +33,6 @@ def _require_group_member(group_id: str, user: User, db: Session) -> FriendGroup
         raise HTTPException(status_code=403)
     return group
 
-
-def _member_display(member: User) -> dict:
-    return {
-        "id": member.id,
-        "name": member.discord_username,
-        "is_guest": member.is_guest,
-    }
 
 
 @router.get("", response_class=HTMLResponse)
@@ -93,6 +88,10 @@ async def add_member(
 ):
     group = _require_group_owner(group_id, user, db)
 
+    name = name.strip()
+    if not name or len(name) > 50:
+        return HTMLResponse('<p style="color:#e55;margin-top:8px;">名前は1〜50文字で入力してください。</p>', status_code=200)
+
     # 登録ユーザーを Discord ユーザー名で検索
     target = db.query(User).filter(User.discord_username == name, User.is_guest == False).first()  # noqa: E712
 
@@ -115,9 +114,14 @@ async def add_member(
         FriendGroupMember.friend_group_id == group_id,
         FriendGroupMember.user_id == target.id,
     ).first()
-    if not exists:
-        db.add(FriendGroupMember(friend_group_id=group_id, user_id=target.id))
-        db.commit()
+    if exists:
+        return HTMLResponse(
+            f'<p style="color:#e55;margin-top:8px;">「{name}」はすでにメンバーです。</p>',
+            status_code=200,
+        )
+
+    db.add(FriendGroupMember(friend_group_id=group_id, user_id=target.id))
+    db.commit()
     db.refresh(group)
     return templates.TemplateResponse(
         "groups/partials/member_row.html",

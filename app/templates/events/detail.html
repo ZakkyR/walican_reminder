@@ -8,9 +8,7 @@
       <a href="/events/{{ event.id }}/edit" class="btn btn-secondary">編集</a>
       <button class="btn btn-danger"
         hx-delete="/events/{{ event.id }}"
-        hx-confirm="イベント「{{ event.name }}」を削除しますか？支出・精算情報も全て削除されます。"
-        hx-target="body"
-        hx-push-url="/">削除</button>
+        hx-confirm="イベント「{{ event.name }}」を削除しますか？支出・精算情報も全て削除されます。">削除</button>
     {% endif %}
     {% if event.status.value == "active" %}
       <form method="post" action="/events/{{ event.id }}/complete" style="display:inline;">

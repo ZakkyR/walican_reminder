@@ -7,9 +7,7 @@
     {% if is_owner %}
       <button class="btn btn-danger"
         hx-delete="/groups/{{ group.id }}"
-        hx-confirm="グループ「{{ group.name }}」を削除しますか？"
-        hx-target="body"
-        hx-push-url="/">削除</button>
+        hx-confirm="グループ「{{ group.name }}」を削除しますか？">削除</button>
     {% endif %}
     <a href="/groups" class="btn btn-secondary">← 戻る</a>
   </div>
