@@ -22,6 +22,7 @@ def get_guild_members(guild_id: str, bot_token: str) -> list[dict]:
     try:
         resp = httpx.get(
             f"{_DISCORD_API}/guilds/{guild_id}/members",
+            # Discord caps this endpoint at 1000 per page; servers with >1000 members are silently truncated.
             params={"limit": 1000},
             headers={"Authorization": f"Bot {bot_token}"},
         )

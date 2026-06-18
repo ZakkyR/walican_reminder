@@ -1,3 +1,4 @@
+import logging
 from fastapi import APIRouter, Request, Depends, HTTPException
 from fastapi.responses import RedirectResponse
 from sqlalchemy.orm import Session
@@ -7,6 +8,8 @@ from app.database import get_db
 from app.models.user import User
 from app.models.user_guild import UserGuild
 from app.services.discord_api import get_user_guilds
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter()
 
@@ -63,7 +66,7 @@ async def auth_callback(request: Request, db: Session = Depends(get_db)):
                 db.add(UserGuild(user_id=user.id, guild_id=g["id"], guild_name=g["name"]))
             db.commit()
         except Exception:
-            pass  # Guild fetch failure must not break login
+            logger.warning("Guild fetch failed for user %s", user.id, exc_info=True)
 
     request.session["user_id"] = user.id
     return RedirectResponse("/", status_code=302)
