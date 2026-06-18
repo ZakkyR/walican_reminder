@@ -1,5 +1,4 @@
 #!/bin/bash
 set -e
-export PATH="/antenv/bin:$PATH"
-alembic upgrade head
-uvicorn app.main:app --host 0.0.0.0 --port 8000 --workers 1
+python -m alembic upgrade head
+python -m uvicorn app.main:app --host 0.0.0.0 --port 8000 --workers 1
