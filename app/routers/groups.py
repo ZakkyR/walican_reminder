@@ -7,6 +7,7 @@ from app.database import get_db
 from app.routers.auth import get_current_user
 from app.models.user import User
 from app.models.friend_group import FriendGroup, FriendGroupMember
+from app.models.user_guild import UserGuild
 
 router = APIRouter(prefix="/groups")
 templates = Jinja2Templates(directory="app/templates")
@@ -62,9 +63,11 @@ async def group_detail(group_id: str, request: Request, db: Session = Depends(ge
     group = _require_group_member(group_id, user, db)
     members = [m.user for m in group.members]
     is_owner = group.created_by == user.id
+    user_guilds = db.query(UserGuild).filter(UserGuild.user_id == user.id).all()
     return templates.TemplateResponse("groups/detail.html", {
         "request": request, "user": user, "group": group,
         "members": members, "is_owner": is_owner,
+        "user_guilds": user_guilds,
     })
 
 

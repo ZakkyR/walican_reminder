@@ -14,6 +14,7 @@ from app.models.user import User
 from app.models.event import Event, EventParticipant, EventStatus
 from app.models.expense import Expense, ExpenseParticipant
 from app.models.friend_group import FriendGroup, FriendGroupMember
+from app.models.user_guild import UserGuild
 
 router = APIRouter(prefix="/events")
 templates = Jinja2Templates(directory="app/templates")
@@ -191,8 +192,10 @@ async def new_event_form(request: Request, db: Session = Depends(get_db), user: 
         .all()
     )
     all_users = db.query(User).filter(User.id != user.id).order_by(User.is_guest, User.discord_username).all()
+    user_guilds = db.query(UserGuild).filter(UserGuild.user_id == user.id).all()
     return templates.TemplateResponse(request, "events/new.html", {
         "user": user, "groups": groups, "all_users": all_users,
+        "user_guilds": user_guilds,
     })
 
 
@@ -239,8 +242,10 @@ async def event_detail(event_id: str, request: Request, tab: str = "expenses", d
 async def edit_event_form(event_id: str, request: Request, db: Session = Depends(get_db), user: User = Depends(get_current_user)):
     event = _require_event_creator(event_id, user, db)
     participants = [p.user for p in event.participants]
+    user_guilds = db.query(UserGuild).filter(UserGuild.user_id == user.id).all()
     return templates.TemplateResponse(request, "events/edit.html", {
         "user": user, "event": event, "participants": participants,
+        "user_guilds": user_guilds,
     })
 
 
