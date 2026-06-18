@@ -49,6 +49,29 @@ def get_guild_members(guild_id: str, bot_token: str) -> list[dict]:
     return members
 
 
+def get_guild_channels(guild_id: str, bot_token: str) -> list[dict]:
+    """Fetch text channels of a guild via Bot token.
+    Returns list of {"id": str, "name": str} sorted by position.
+    Returns [] on HTTP error.
+    """
+    try:
+        resp = httpx.get(
+            f"{_DISCORD_API}/guilds/{guild_id}/channels",
+            headers={"Authorization": f"Bot {bot_token}"},
+        )
+        resp.raise_for_status()
+    except httpx.HTTPStatusError:
+        return []
+
+    text_channels = [
+        {"id": ch["id"], "name": ch["name"]}
+        for ch in resp.json()
+        if ch["type"] == 0  # GUILD_TEXT
+    ]
+    text_channels.sort(key=lambda c: c["name"])
+    return text_channels
+
+
 def get_member_nick(guild_id: str, discord_id: str, bot_token: str) -> str | None:
     """Returns server nickname for a specific user in a guild, or None if no nick/not found."""
     try:

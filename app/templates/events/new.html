@@ -28,19 +28,7 @@
         {% endfor %}
       </select>
     </div>
-    <div class="form-group">
-      <label>個別追加（任意、複数選択可）</label>
-      <select name="participant_ids" multiple style="height:150px;">
-        {% for u in all_users %}
-          <option value="{{ u.id }}">
-            {{ u.discord_username }}{% if u.is_guest %} 〔未ログイン〕{% endif %}
-          </option>
-        {% endfor %}
-      </select>
-      <div style="font-size:0.75rem;color:#999;margin-top:4px;">Ctrl（Mac は ⌘）を押しながらクリックで複数選択</div>
-      <div style="font-size:0.75rem;color:#888;margin-top:4px;">Discord サーバーからの追加はイベント作成後に「編集」から行えます。</div>
-    </div>
-    <button type="submit" class="btn btn-primary">作成</button>
+<button type="submit" class="btn btn-primary">作成</button>
   </form>
 </div>
 {% endblock %}

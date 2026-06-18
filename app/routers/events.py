@@ -192,10 +192,9 @@ async def new_event_form(request: Request, db: Session = Depends(get_db), user: 
         .filter(FriendGroupMember.user_id == user.id)
         .all()
     )
-    all_users = db.query(User).filter(User.id != user.id).order_by(User.is_guest, User.discord_username).all()
     user_guilds = db.query(UserGuild).join(BotGuild, BotGuild.guild_id == UserGuild.guild_id).filter(UserGuild.user_id == user.id).all()
     return templates.TemplateResponse(request, "events/new.html", {
-        "user": user, "groups": groups, "all_users": all_users,
+        "user": user, "groups": groups,
         "user_guilds": user_guilds,
     })
 
@@ -236,11 +235,13 @@ async def event_detail(event_id: str, request: Request, tab: str = "expenses", d
         ep.user_id: ep.display_name or ep.user.discord_username
         for ep in event.participants
     }
+    user_guilds = db.query(UserGuild).join(BotGuild, BotGuild.guild_id == UserGuild.guild_id).filter(UserGuild.user_id == user.id).all()
     return templates.TemplateResponse(request, "events/detail.html", {
         "user": user, "event": event,
         "participants": participants, "tab": tab,
         "is_creator": is_creator,
         "display_names": display_names,
+        "user_guilds": user_guilds,
     })
 
 

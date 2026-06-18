@@ -9,7 +9,7 @@ from app.models.user import User
 from app.models.user_guild import UserGuild
 from app.models.event import EventParticipant
 from app.models.friend_group import FriendGroupMember
-from app.services.discord_api import get_guild_members, get_member_nick
+from app.services.discord_api import get_guild_members, get_guild_channels, get_member_nick
 from app.config import settings
 
 router = APIRouter(prefix="/api")
@@ -51,6 +51,24 @@ async def server_members(
         "partials/server_member_list.html",
         {"members": members},
     )
+
+
+@router.get("/channels")
+async def channels(
+    guild_id: str,
+    db: Session = Depends(get_db),
+    user: User = Depends(get_current_user),
+):
+    allowed = db.query(UserGuild).filter(
+        UserGuild.user_id == user.id,
+        UserGuild.guild_id == guild_id,
+    ).first()
+    if not allowed:
+        raise HTTPException(status_code=403)
+
+    ch_list = get_guild_channels(guild_id, settings.discord_bot_token)
+    from fastapi.responses import JSONResponse
+    return JSONResponse(ch_list)
 
 
 @router.get("/my-nickname")

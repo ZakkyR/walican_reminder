@@ -2,10 +2,31 @@
 <div class="card">
   <h3 style="margin-bottom:16px;">通知設定</h3>
   <form method="post" action="/events/{{ event.id }}/notification">
+
     <div class="form-group">
-      <label>Discord チャンネル ID *</label>
-      <input type="text" name="discord_channel_id" required value="{{ ns.discord_channel_id if ns else '' }}" placeholder="例: 1234567890123456789">
-      <small style="color:#888;">チャンネルを右クリック → 「IDをコピー」</small>
+      <label>Discord チャンネル *</label>
+      {% if user_guilds %}
+        <select id="ns-guild-select"
+                style="margin-bottom:6px;"
+                onchange="nsLoadChannels(this.value)">
+          <option value="">サーバーを選択...</option>
+          {% for guild in user_guilds %}
+            <option value="{{ guild.guild_id }}">{{ guild.guild_name }}</option>
+          {% endfor %}
+        </select>
+      {% endif %}
+      <select id="ns-channel-select" name="discord_channel_id" required>
+        {% if ns and ns.discord_channel_id %}
+          <option value="{{ ns.discord_channel_id }}" selected>現在の設定（ID: {{ ns.discord_channel_id }}）</option>
+        {% else %}
+          <option value="">← サーバーを選択してください</option>
+        {% endif %}
+      </select>
+      {% if not user_guilds %}
+        <small style="color:#888;">
+          <a href="/servers">Bot をサーバーに招待</a>するとここからチャンネルを選択できます。
+        </small>
+      {% endif %}
     </div>
 
     <div class="form-group">
@@ -58,3 +79,28 @@
     {% endif %}
   {% endif %}
 </div>
+
+<script>
+async function nsLoadChannels(guildId) {
+  const sel = document.getElementById('ns-channel-select');
+  if (!guildId) {
+    sel.innerHTML = '<option value="">← サーバーを選択してください</option>';
+    return;
+  }
+  sel.innerHTML = '<option value="">読み込み中...</option>';
+  try {
+    const r = await fetch('/api/channels?guild_id=' + encodeURIComponent(guildId));
+    if (!r.ok) { sel.innerHTML = '<option value="">取得失敗</option>'; return; }
+    const channels = await r.json();
+    if (channels.length === 0) {
+      sel.innerHTML = '<option value="">テキストチャンネルが見つかりません</option>';
+      return;
+    }
+    sel.innerHTML = channels.map(ch =>
+      `<option value="${ch.id}">#${ch.name}</option>`
+    ).join('');
+  } catch (e) {
+    sel.innerHTML = '<option value="">取得失敗</option>';
+  }
+}
+</script>
