@@ -1,3 +1,4 @@
+{% if event.status.value == "active" %}
 <div class="card" style="margin-bottom:16px;">
   <h3 style="margin-bottom:12px;">支出追加</h3>
   <form method="post" action="/events/{{ event.id }}/expenses">
@@ -35,6 +36,7 @@
     <button type="submit" class="btn btn-primary">追加</button>
   </form>
 </div>
+{% endif %}
 
 <h3 style="margin-bottom:12px;">支出一覧</h3>
 {% for expense in event.expenses %}
@@ -47,6 +49,7 @@
           {% for ep in expense.participants %}{{ display_names.get(ep.user.id, ep.user.discord_username) }}{% if ep.custom_amount %}(¥{{ ep.custom_amount|int }}){% endif %}{% if not loop.last %}、{% endif %}{% endfor %}
         </div>
       </div>
+      {% if event.status.value == "active" %}
       <div style="display:flex;gap:6px;">
         <button type="button" class="btn btn-secondary" style="padding:4px 10px;font-size:0.8rem;"
           hx-get="/events/{{ event.id }}/expenses/{{ expense.id }}/edit-form"
@@ -58,6 +61,7 @@
           hx-target="closest .card"
           hx-swap="outerHTML">削除</button>
       </div>
+      {% endif %}
     </div>
   </div>
 {% else %}

@@ -9,6 +9,7 @@
           → {{ display_names.get(payment.to_user.id, payment.to_user.discord_username) }}
           <span style="margin-left:8px;font-weight:600;">¥{{ "{:,}".format(payment.amount|int) }}</span>
         </div>
+        {% if event.status.value == "active" %}
         <form method="post" action="/events/{{ event.id }}/payments/{{ payment.id }}/pay">
           {% if payment.status.value == "paid" %}
             <button type="submit" class="btn btn-secondary" style="padding:4px 12px;font-size:0.85rem;">✓ 支払済み</button>
@@ -16,6 +17,13 @@
             <button type="submit" class="btn btn-primary" style="padding:4px 12px;font-size:0.85rem;">支払済みにする</button>
           {% endif %}
         </form>
+        {% else %}
+          {% if payment.status.value == "paid" %}
+            <span class="btn btn-secondary" style="padding:4px 12px;font-size:0.85rem;">✓ 支払済み</span>
+          {% else %}
+            <span style="font-size:0.85rem;color:#888;">未払い</span>
+          {% endif %}
+        {% endif %}
       </div>
     </div>
   {% endfor %}

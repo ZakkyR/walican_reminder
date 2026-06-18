@@ -26,14 +26,16 @@
 <div class="tabs">
   <a href="/events/{{ event.id }}?tab=expenses" class="tab {% if tab == 'expenses' %}active{% endif %}">支出</a>
   <a href="/events/{{ event.id }}?tab=payments" class="tab {% if tab == 'payments' %}active{% endif %}">精算状況</a>
+  {% if event.status.value == "active" %}
   <a href="/events/{{ event.id }}?tab=notification" class="tab {% if tab == 'notification' %}active{% endif %}">通知設定</a>
+  {% endif %}
 </div>
 
 {% if tab == "expenses" %}
   {% include "events/partials/expenses_tab.html" %}
 {% elif tab == "payments" %}
   {% include "events/partials/payments_tab.html" %}
-{% elif tab == "notification" %}
+{% elif tab == "notification" and event.status.value == "active" %}
   {% include "events/partials/notification_tab.html" %}
 {% endif %}
 
