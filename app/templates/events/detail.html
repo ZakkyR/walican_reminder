@@ -11,11 +11,14 @@
         hx-confirm="イベント「{{ event.name }}」を削除しますか？支出・精算情報も全て削除されます。">削除</button>
     {% endif %}
     {% if event.status.value == "active" %}
-      <form method="post" action="/events/{{ event.id }}/complete" style="display:inline;">
-        <button type="submit" class="btn btn-secondary" onclick="return confirm('完了にしますか？')">完了にする</button>
+      <form method="post" action="/events/{{ event.id }}/complete" style="display:inline;" id="complete-form">
+        <button type="button" class="btn btn-secondary" onclick="handleComplete({{ unpaid_count }})">完了にする</button>
       </form>
     {% else %}
       <span class="badge badge-success">✓ 完了済み</span>
+      <form method="post" action="/events/{{ event.id }}/reopen" style="display:inline;">
+        <button type="submit" class="btn btn-secondary" onclick="return confirm('イベントを再開しますか？')">再開する</button>
+      </form>
     {% endif %}
     <a href="/" class="btn btn-secondary">← 戻る</a>
   </div>
@@ -34,4 +37,15 @@
 {% elif tab == "notification" %}
   {% include "events/partials/notification_tab.html" %}
 {% endif %}
+
+<script>
+function handleComplete(unpaidCount) {
+  var msg = unpaidCount > 0
+    ? unpaidCount + '人が未払いです。全員支払済にして完了しますか？'
+    : '完了にしますか？';
+  if (confirm(msg)) {
+    document.getElementById('complete-form').submit();
+  }
+}
+</script>
 {% endblock %}

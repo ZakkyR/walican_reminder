@@ -19,6 +19,14 @@
       </div>
     </div>
   {% endfor %}
+  {% if event.status.value == "active" and unpaid_count == 0 %}
+    <div class="card" style="border:2px solid #57f287;margin-top:16px;text-align:center;padding:16px;">
+      <p style="margin-bottom:12px;">🎉 全員が支払済みです！</p>
+      <form method="post" action="/events/{{ event.id }}/complete" style="display:inline;">
+        <button type="submit" class="btn btn-primary" onclick="return confirm('完了にしますか？')">完了にする</button>
+      </form>
+    </div>
+  {% endif %}
 {% else %}
   <p style="color:#888;">支出を追加すると精算額が表示されます。</p>
 {% endif %}

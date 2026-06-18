@@ -14,6 +14,7 @@ from app.models.user import User
 from app.models.event import Event, EventParticipant, EventStatus
 from app.models.expense import Expense, ExpenseParticipant
 from app.models.friend_group import FriendGroup, FriendGroupMember
+from app.models.payment import Payment, PaymentStatus
 from app.models.user_guild import UserGuild
 from app.models.bot_guild import BotGuild
 
@@ -236,12 +237,14 @@ async def event_detail(event_id: str, request: Request, tab: str = "expenses", d
         for ep in event.participants
     }
     user_guilds = db.query(UserGuild).join(BotGuild, BotGuild.guild_id == UserGuild.guild_id).filter(UserGuild.user_id == user.id).all()
+    unpaid_count = sum(1 for p in event.payments if p.status == PaymentStatus.pending)
     return templates.TemplateResponse(request, "events/detail.html", {
         "user": user, "event": event,
         "participants": participants, "tab": tab,
         "is_creator": is_creator,
         "display_names": display_names,
         "user_guilds": user_guilds,
+        "unpaid_count": unpaid_count,
     })
 
 
@@ -381,6 +384,19 @@ async def delete_event(event_id: str, db: Session = Depends(get_db), user: User 
 @router.post("/{event_id}/complete")
 async def complete_event(event_id: str, db: Session = Depends(get_db), user: User = Depends(get_current_user)):
     event = _require_participant(event_id, user, db)
+    from datetime import datetime, timezone
+    for p in event.payments:
+        if p.status == PaymentStatus.pending:
+            p.status = PaymentStatus.paid
+            p.paid_at = datetime.now(timezone.utc)
     event.status = EventStatus.completed
+    db.commit()
+    return RedirectResponse(f"/events/{event_id}", status_code=303)
+
+
+@router.post("/{event_id}/reopen")
+async def reopen_event(event_id: str, db: Session = Depends(get_db), user: User = Depends(get_current_user)):
+    event = _require_participant(event_id, user, db)
+    event.status = EventStatus.active
     db.commit()
     return RedirectResponse(f"/events/{event_id}", status_code=303)

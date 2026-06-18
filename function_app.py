@@ -56,9 +56,14 @@ def _do_notify(event_id: str, db, bot_token: str, app_base_url: str) -> bool:
     from app.models.event import Event
     from app.models.payment import PaymentStatus
 
+    from app.models.event import EventStatus
     event = db.query(Event).filter(Event.id == event_id).first()
     if not event or not event.notification_setting:
         logger.warning("Event %s: not found or has no notification setting", event_id)
+        return False
+
+    if event.status == EventStatus.completed:
+        logger.info("Event %s: completed, skipping notification", event_id)
         return False
 
     unpaid = [p for p in event.payments if p.status == PaymentStatus.pending]

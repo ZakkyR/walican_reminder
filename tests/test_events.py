@@ -1,5 +1,7 @@
+from decimal import Decimal
 from app.models.event import Event, EventParticipant, EventStatus
 from app.models.notification import NotificationSetting, NotificationMode
+from app.models.payment import Payment, PaymentStatus
 from app.models.user import User
 
 def test_create_event(auth_client, db, user):
@@ -133,3 +135,43 @@ def test_complete_event(auth_client, db, user):
     assert response.status_code in (302, 303)
     db.refresh(event)
     assert event.status == EventStatus.completed
+
+
+def test_complete_event_marks_pending_payments_as_paid(auth_client, db, user):
+    other = User(discord_id="c001", discord_username="OtherC")
+    db.add(other)
+    db.flush()
+    event = Event(name="支払完了テスト", created_by=user.id)
+    db.add(event)
+    db.add(EventParticipant(event_id=event.id, user_id=user.id))
+    db.add(EventParticipant(event_id=event.id, user_id=other.id))
+    db.flush()
+    payment = Payment(
+        event_id=event.id,
+        from_user_id=other.id,
+        to_user_id=user.id,
+        amount=Decimal(3000),
+        status=PaymentStatus.pending,
+    )
+    db.add(payment)
+    db.commit()
+    db.refresh(payment)
+
+    auth_client.post(f"/events/{event.id}/complete", follow_redirects=False)
+
+    db.refresh(payment)
+    assert payment.status == PaymentStatus.paid
+
+
+def test_reopen_event(auth_client, db, user):
+    event = Event(name="再開テスト", created_by=user.id)
+    db.add(event)
+    db.add(EventParticipant(event_id=event.id, user_id=user.id))
+    event.status = EventStatus.completed
+    db.commit()
+    db.refresh(event)
+
+    response = auth_client.post(f"/events/{event.id}/reopen", follow_redirects=False)
+    assert response.status_code in (302, 303)
+    db.refresh(event)
+    assert event.status == EventStatus.active
