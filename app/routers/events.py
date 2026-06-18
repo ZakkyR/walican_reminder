@@ -1,3 +1,4 @@
+import uuid
 from datetime import date
 from fastapi import APIRouter, Request, Depends, Form, HTTPException, Response
 from fastapi.responses import HTMLResponse, RedirectResponse
@@ -92,7 +93,10 @@ async def event_detail(event_id: str, request: Request, tab: str = "expenses", d
 @router.get("/{event_id}/edit", response_class=HTMLResponse)
 async def edit_event_form(event_id: str, request: Request, db: Session = Depends(get_db), user: User = Depends(get_current_user)):
     event = _require_event_creator(event_id, user, db)
-    return templates.TemplateResponse(request, "events/edit.html", {"user": user, "event": event})
+    participants = [p.user for p in event.participants]
+    return templates.TemplateResponse(request, "events/edit.html", {
+        "user": user, "event": event, "participants": participants,
+    })
 
 
 @router.post("/{event_id}/edit")
@@ -110,6 +114,65 @@ async def update_event(
     event.payment_deadline = date.fromisoformat(payment_deadline) if payment_deadline else None
     db.commit()
     return RedirectResponse(f"/events/{event_id}", status_code=303)
+
+
+@router.post("/{event_id}/participants", response_class=HTMLResponse)
+async def add_participant(
+    event_id: str,
+    request: Request,
+    name: str = Form(...),
+    db: Session = Depends(get_db),
+    user: User = Depends(get_current_user),
+):
+    event = _require_event_creator(event_id, user, db)
+
+    name = name.strip()
+    if not name or len(name) > 50:
+        return HTMLResponse('<p style="color:#e55;margin-top:8px;">名前は1〜50文字で入力してください。</p>', status_code=200)
+
+    target = db.query(User).filter(User.discord_username == name, User.is_guest == False).first()  # noqa: E712
+    if not target:
+        target = db.query(User).filter(User.discord_username == name, User.is_guest == True).first()  # noqa: E712
+    if not target:
+        guest_id = f"guest_{uuid.uuid4().hex}"
+        target = User(discord_id=guest_id, discord_username=name, is_guest=True)
+        db.add(target)
+        db.flush()
+
+    exists = db.query(EventParticipant).filter(
+        EventParticipant.event_id == event_id,
+        EventParticipant.user_id == target.id,
+    ).first()
+    if exists:
+        return HTMLResponse(
+            f'<p style="color:#e55;margin-top:8px;">「{name}」はすでに参加者です。</p>',
+            status_code=200,
+        )
+
+    db.add(EventParticipant(event_id=event_id, user_id=target.id))
+    db.commit()
+    return templates.TemplateResponse(
+        "events/partials/event_participant_row.html",
+        {"request": request, "participant": target, "event": event},
+    )
+
+
+@router.delete("/{event_id}/participants/{participant_user_id}")
+async def remove_participant(
+    event_id: str,
+    participant_user_id: str,
+    db: Session = Depends(get_db),
+    user: User = Depends(get_current_user),
+):
+    event = _require_event_creator(event_id, user, db)
+    if participant_user_id == event.created_by:
+        raise HTTPException(status_code=400, detail="作成者は削除できません")
+    db.query(EventParticipant).filter(
+        EventParticipant.event_id == event_id,
+        EventParticipant.user_id == participant_user_id,
+    ).delete()
+    db.commit()
+    return HTMLResponse("", status_code=200)
 
 
 @router.delete("/{event_id}")

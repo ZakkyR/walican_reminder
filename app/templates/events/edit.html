@@ -5,6 +5,7 @@
   <h1>イベント編集</h1>
   <a href="/events/{{ event.id }}" class="btn btn-secondary">← 戻る</a>
 </div>
+
 <div class="card">
   <form method="post" action="/events/{{ event.id }}/edit">
     <div class="form-group">
@@ -20,6 +21,20 @@
       <input type="date" name="payment_deadline" value="{{ event.payment_deadline.isoformat() if event.payment_deadline else '' }}">
     </div>
     <button type="submit" class="btn btn-primary">保存</button>
+  </form>
+</div>
+
+<div class="card" style="margin-top:16px;">
+  <h3 style="margin-bottom:12px;">参加者</h3>
+  <div id="participant-list">
+    {% for participant in participants %}
+      {% include "events/partials/event_participant_row.html" %}
+    {% endfor %}
+  </div>
+
+  <form hx-post="/events/{{ event.id }}/participants" hx-target="#participant-list" hx-swap="beforeend" style="margin-top:12px;display:flex;gap:8px;">
+    <input type="text" name="name" placeholder="名前（Discord未登録の方も入力可）" style="flex:1;padding:8px;border:1px solid #ddd;border-radius:6px;">
+    <button type="submit" class="btn btn-primary">追加</button>
   </form>
 </div>
 {% endblock %}
