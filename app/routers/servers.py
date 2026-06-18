@@ -8,6 +8,7 @@ from app.routers.auth import get_current_user
 from app.models.user import User
 from app.models.user_guild import UserGuild
 from app.models.bot_guild import BotGuild
+from app.services.discord_api import get_bot_guilds
 from app.config import settings
 
 router = APIRouter(prefix="/servers")
@@ -22,6 +23,18 @@ _callback_uri_encoded = quote(_callback_uri, safe="")
 @router.get("", response_class=HTMLResponse)
 async def server_list(request: Request, db: Session = Depends(get_db), user: User = Depends(get_current_user)):
     user_guilds = db.query(UserGuild).filter(UserGuild.user_id == user.id).order_by(UserGuild.guild_name).all()
+
+    # Discord APIからBotが参加しているサーバーを取得してDBを同期
+    if settings.discord_bot_token:
+        live_ids = set(get_bot_guilds(settings.discord_bot_token))
+        if live_ids:
+            db_ids = {r.guild_id for r in db.query(BotGuild).all()}
+            for gid in live_ids - db_ids:
+                db.add(BotGuild(guild_id=gid))
+            for gid in db_ids - live_ids:
+                db.query(BotGuild).filter(BotGuild.guild_id == gid).delete()
+            db.commit()
+
     bot_guild_ids = {r.guild_id for r in db.query(BotGuild).all()}
     return templates.TemplateResponse(request, "servers/index.html", {
         "user": user,
