@@ -15,7 +15,6 @@
         <button type="button" class="btn btn-secondary" onclick="handleComplete({{ unpaid_count }})">完了にする</button>
       </form>
     {% else %}
-      <span class="badge badge-success">✓ 完了済み</span>
       <form method="post" action="/events/{{ event.id }}/reopen" style="display:inline;">
         <button type="submit" class="btn btn-secondary" onclick="return confirm('イベントを再開しますか？')">再開する</button>
       </form>
