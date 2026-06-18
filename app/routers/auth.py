@@ -5,6 +5,8 @@ from authlib.integrations.starlette_client import OAuth
 from app.config import settings
 from app.database import get_db
 from app.models.user import User
+from app.models.user_guild import UserGuild
+from app.services.discord_api import get_user_guilds
 
 router = APIRouter()
 
@@ -16,7 +18,7 @@ oauth.register(
     authorize_url="https://discord.com/api/oauth2/authorize",
     access_token_url="https://discord.com/api/oauth2/token",
     api_base_url="https://discord.com/api/v10/",
-    client_kwargs={"scope": "identify"},
+    client_kwargs={"scope": "identify guilds"},
 )
 
 
@@ -47,7 +49,21 @@ async def auth_callback(request: Request, db: Session = Depends(get_db)):
         db.refresh(user)
     else:
         user.discord_username = data["username"]
+        if data.get("avatar"):
+            user.discord_avatar_url = f"https://cdn.discordapp.com/avatars/{data['id']}/{data['avatar']}.png"
         db.commit()
+
+    # Store user's guild list (replace existing entries)
+    access_token = token.get("access_token") if isinstance(token, dict) else getattr(token, "access_token", None)
+    if access_token:
+        try:
+            guilds = get_user_guilds(access_token)
+            db.query(UserGuild).filter(UserGuild.user_id == user.id).delete()
+            for g in guilds:
+                db.add(UserGuild(user_id=user.id, guild_id=g["id"], guild_name=g["name"]))
+            db.commit()
+        except Exception:
+            pass  # Guild fetch failure must not break login
 
     request.session["user_id"] = user.id
     return RedirectResponse("/", status_code=302)
@@ -60,23 +76,11 @@ async def logout(request: Request):
 
 
 async def get_current_user(request: Request, db: Session = Depends(get_db)) -> User:
-    """Dependency that returns the current authenticated user.
-
-    Raises HTTPException(307) redirecting to /login if not authenticated.
-    Routes using this dependency should handle Union[User, RedirectResponse]
-    or catch the redirect via exception handlers.
-    """
     user_id = request.session.get("user_id")
     if not user_id:
-        raise HTTPException(
-            status_code=307,
-            headers={"location": "/login"},
-        )
+        raise HTTPException(status_code=307, headers={"location": "/login"})
     user = db.get(User, user_id)
     if not user:
         request.session.clear()
-        raise HTTPException(
-            status_code=307,
-            headers={"location": "/login"},
-        )
+        raise HTTPException(status_code=307, headers={"location": "/login"})
     return user
