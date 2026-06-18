@@ -11,6 +11,7 @@ on:
       - 'app/database.py'
       - 'app/config.py'
       - 'requirements.txt'
+      - 'requirements-functions.txt'
   workflow_dispatch:
 
 jobs:
@@ -26,7 +27,7 @@ jobs:
           python-version: '3.12'
 
       - name: Install dependencies
-        run: pip install --target=".python_packages/lib/site-packages" -r requirements.txt
+        run: pip install --target=".python_packages/lib/site-packages" -r requirements-functions.txt
 
       - name: Create zip package
         run: zip -r deploy.zip . --exclude "*.git*" --exclude ".github/*" --exclude "tests/*" --exclude "*.pyc" --exclude "__pycache__/*" --exclude "antenv/*"

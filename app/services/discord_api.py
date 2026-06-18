@@ -1,6 +1,7 @@
 import httpx
 
 _DISCORD_API = "https://discord.com/api/v10"
+_TIMEOUT = 10
 
 
 def get_user_guilds(access_token: str) -> list[dict]:
@@ -8,6 +9,7 @@ def get_user_guilds(access_token: str) -> list[dict]:
     resp = httpx.get(
         f"{_DISCORD_API}/users/@me/guilds",
         headers={"Authorization": f"Bearer {access_token}"},
+        timeout=_TIMEOUT,
     )
     resp.raise_for_status()
     return [{"id": g["id"], "name": g["name"]} for g in resp.json()]
@@ -28,9 +30,10 @@ def get_guild_members(guild_id: str, bot_token: str) -> list[dict]:
             # Discord caps this endpoint at 1000 per page; servers with >1000 members are silently truncated.
             params={"limit": 1000},
             headers={"Authorization": f"Bot {bot_token}"},
+            timeout=_TIMEOUT,
         )
         resp.raise_for_status()
-    except httpx.HTTPStatusError:
+    except httpx.HTTPError:
         return []
 
     members = []
@@ -51,24 +54,25 @@ def get_guild_members(guild_id: str, bot_token: str) -> list[dict]:
 
 def get_guild_channels(guild_id: str, bot_token: str) -> list[dict]:
     """Fetch text channels of a guild via Bot token.
-    Returns list of {"id": str, "name": str} sorted by position.
+    Returns list of {"id": str, "name": str} sorted by Discord position.
     Returns [] on HTTP error.
     """
     try:
         resp = httpx.get(
             f"{_DISCORD_API}/guilds/{guild_id}/channels",
             headers={"Authorization": f"Bot {bot_token}"},
+            timeout=_TIMEOUT,
         )
         resp.raise_for_status()
-    except httpx.HTTPStatusError:
+    except httpx.HTTPError:
         return []
 
     text_channels = [
-        {"id": ch["id"], "name": ch["name"]}
+        {"id": ch["id"], "name": ch["name"], "position": ch.get("position", 0)}
         for ch in resp.json()
         if ch["type"] == 0  # GUILD_TEXT
     ]
-    text_channels.sort(key=lambda c: c["name"])
+    text_channels.sort(key=lambda c: c["position"])
     return text_channels
 
 
@@ -78,8 +82,9 @@ def get_member_nick(guild_id: str, discord_id: str, bot_token: str) -> str | Non
         resp = httpx.get(
             f"{_DISCORD_API}/guilds/{guild_id}/members/{discord_id}",
             headers={"Authorization": f"Bot {bot_token}"},
+            timeout=_TIMEOUT,
         )
         resp.raise_for_status()
         return resp.json().get("nick") or None
-    except httpx.HTTPStatusError:
+    except httpx.HTTPError:
         return None

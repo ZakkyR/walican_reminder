@@ -11,5 +11,3 @@ itsdangerous==2.2.0
 pyodbc==5.2.0
 pytest==8.3.3
 pytest-mock==3.14.0
-azure-functions==1.21.3
-croniter==3.0.3

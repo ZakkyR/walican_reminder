@@ -7,7 +7,7 @@ from typing import Optional
 from app.config import settings
 from app.database import get_db
 from app.routers.auth import get_current_user
-from app.routers.events import _require_participant
+from app.routers.events import _require_event_creator
 from app.models.user import User
 from app.models.notification import NotificationSetting, NotificationMode
 
@@ -27,7 +27,7 @@ async def save_notification(
     db: Session = Depends(get_db),
     user: User = Depends(get_current_user),
 ):
-    _require_participant(event_id, user, db)
+    _require_event_creator(event_id, user, db)
     setting = db.query(NotificationSetting).filter(NotificationSetting.event_id == event_id).first()
     if not setting:
         setting = NotificationSetting(event_id=event_id)
@@ -50,7 +50,7 @@ async def send_now(
     db: Session = Depends(get_db),
     user: User = Depends(get_current_user),
 ):
-    _require_participant(event_id, user, db)
+    _require_event_creator(event_id, user, db)
     if settings.functions_url and settings.functions_key:
         try:
             async with httpx.AsyncClient() as client:

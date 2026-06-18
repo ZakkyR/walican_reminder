@@ -1,6 +1,8 @@
 {% set ns = event.notification_setting if event.notification_setting else none %}
 <div class="card">
   <h3 style="margin-bottom:16px;">通知設定</h3>
+
+  {% if is_creator %}
   <form method="post" action="/events/{{ event.id }}/notification">
 
     <div class="form-group">
@@ -78,29 +80,76 @@
       <p style="font-size:0.8rem;color:#888;margin-top:8px;">最終通知: {{ ns.last_notified_at }}</p>
     {% endif %}
   {% endif %}
+
+  {% else %}
+  {# 作成者以外は読み取り専用 #}
+  {% if ns %}
+    <table style="font-size:0.9rem;border-collapse:collapse;width:100%;">
+      <tr><td style="padding:6px 0;color:#888;width:140px;">チャンネル ID</td><td>{{ ns.discord_channel_id }}</td></tr>
+      <tr><td style="padding:6px 0;color:#888;">モード</td>
+        <td>
+          {% if ns.mode.value == 'scheduled' %}定期スケジュール（{{ ns.schedule_cron }}）
+          {% elif ns.mode.value == 'deadline' %}支払期限ベース（{{ ns.deadline_days_before }}日前〜{{ ns.deadline_days_after }}日後）
+          {% elif ns.mode.value == 'from_date' %}{{ ns.notify_from_date }} 以降・{{ ns.notify_interval_days }}日おき
+          {% endif %}
+        </td>
+      </tr>
+      {% if ns.last_notified_at %}
+        <tr><td style="padding:6px 0;color:#888;">最終通知</td><td>{{ ns.last_notified_at }}</td></tr>
+      {% endif %}
+    </table>
+  {% else %}
+    <p style="color:#888;">通知設定はまだ行われていません。</p>
+  {% endif %}
+  {% endif %}
 </div>
 
 <script>
 async function nsLoadChannels(guildId) {
   const sel = document.getElementById('ns-channel-select');
   if (!guildId) {
-    sel.innerHTML = '<option value="">← サーバーを選択してください</option>';
+    sel.innerHTML = '';
+    const opt = document.createElement('option');
+    opt.value = '';
+    opt.textContent = '← サーバーを選択してください';
+    sel.appendChild(opt);
     return;
   }
-  sel.innerHTML = '<option value="">読み込み中...</option>';
+  sel.innerHTML = '';
+  const loading = document.createElement('option');
+  loading.value = '';
+  loading.textContent = '読み込み中...';
+  sel.appendChild(loading);
   try {
     const r = await fetch('/api/channels?guild_id=' + encodeURIComponent(guildId));
-    if (!r.ok) { sel.innerHTML = '<option value="">取得失敗</option>'; return; }
-    const channels = await r.json();
-    if (channels.length === 0) {
-      sel.innerHTML = '<option value="">テキストチャンネルが見つかりません</option>';
+    sel.innerHTML = '';
+    if (!r.ok) {
+      const err = document.createElement('option');
+      err.value = '';
+      err.textContent = '取得失敗';
+      sel.appendChild(err);
       return;
     }
-    sel.innerHTML = channels.map(ch =>
-      `<option value="${ch.id}">#${ch.name}</option>`
-    ).join('');
+    const channels = await r.json();
+    if (channels.length === 0) {
+      const none = document.createElement('option');
+      none.value = '';
+      none.textContent = 'テキストチャンネルが見つかりません';
+      sel.appendChild(none);
+      return;
+    }
+    channels.forEach(ch => {
+      const opt = document.createElement('option');
+      opt.value = ch.id;
+      opt.textContent = '#' + ch.name;
+      sel.appendChild(opt);
+    });
   } catch (e) {
-    sel.innerHTML = '<option value="">取得失敗</option>';
+    sel.innerHTML = '';
+    const err = document.createElement('option');
+    err.value = '';
+    err.textContent = '取得失敗';
+    sel.appendChild(err);
   }
 }
 </script>

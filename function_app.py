@@ -113,7 +113,7 @@ def _should_notify(ns, now: datetime, today) -> bool:
         last = ns.last_notified_at
         if last is None:
             return True
-        return (now - last).days >= interval
+        return last.date() < today or (today - last.date()).days >= interval
 
     return False
 

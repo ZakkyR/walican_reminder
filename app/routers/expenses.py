@@ -97,8 +97,8 @@ async def edit_expense_form(
     expense = db.get(Expense, expense_id)
     if not expense or expense.event_id != event_id:
         raise HTTPException(status_code=404)
-    participants = [ep.user for ep in db.query(EventParticipant).filter(EventParticipant.event_id == event_id).all()]
     ep_rows = db.query(EventParticipant).filter(EventParticipant.event_id == event_id).all()
+    participants = [ep.user for ep in ep_rows]
     display_names = {ep.user_id: ep.display_name or ep.user.discord_username for ep in ep_rows}
     expense_participant_map = {ep.user_id: ep.custom_amount for ep in expense.participants}
     return templates.TemplateResponse(request, "events/partials/expense_edit_form.html", {
