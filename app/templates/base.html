@@ -13,7 +13,11 @@
     <div class="nav-links">
       <a href="/groups">仲間グループ</a>
       <a href="/servers">サーバー</a>
-      <span class="nav-user">{{ user.discord_username }}</span>
+      {% if user.discord_avatar_url %}
+        <img src="{{ user.discord_avatar_url }}" class="avatar" alt="{{ user.discord_username }}" title="{{ user.discord_username }}">
+      {% else %}
+        <span class="avatar-placeholder" title="{{ user.discord_username }}">{{ user.discord_username[0]|upper }}</span>
+      {% endif %}
       <a href="/logout">ログアウト</a>
     </div>
   </nav>
