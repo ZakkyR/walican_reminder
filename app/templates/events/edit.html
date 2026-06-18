@@ -32,7 +32,7 @@
     {% endfor %}
   </div>
 
-  <form hx-post="/events/{{ event.id }}/participants" hx-target="#participant-list" hx-swap="beforeend" style="margin-top:12px;display:flex;gap:8px;">
+  <form hx-post="/events/{{ event.id }}/participants" hx-target="#participant-list" hx-swap="beforeend" hx-on::after-request="this.reset()" style="margin-top:12px;display:flex;gap:8px;">
     <input type="text" name="name" placeholder="名前（Discord未登録の方も入力可）" style="flex:1;padding:8px;border:1px solid #ddd;border-radius:6px;">
     <button type="submit" class="btn btn-primary">追加</button>
   </form>
