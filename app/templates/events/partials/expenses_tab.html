@@ -20,10 +20,15 @@
     <div class="form-group">
       <label>参加者（カスタム金額は空欄で均等割り）</label>
       {% for p in participants %}
-        <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px;">
-          <input type="checkbox" name="participant_ids" value="{{ p.id }}" id="p_{{ p.id }}" checked>
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;">
+          <input type="checkbox" name="participant_ids" value="{{ p.id }}" id="p_{{ p.id }}" checked style="width:auto;flex-shrink:0;">
+          {% if p.discord_avatar_url %}
+            <img src="{{ p.discord_avatar_url }}" class="avatar" alt="{{ p.discord_username }}">
+          {% else %}
+            <span class="avatar-placeholder">{{ p.discord_username[0]|upper }}</span>
+          {% endif %}
           <label for="p_{{ p.id }}" style="margin:0;flex:1;">{{ p.discord_username }}</label>
-          <input type="number" name="custom_{{ p.id }}" placeholder="カスタム金額" style="width:120px;">
+          <input type="number" name="custom_{{ p.id }}" placeholder="カスタム金額" style="width:110px;">
         </div>
       {% endfor %}
     </div>

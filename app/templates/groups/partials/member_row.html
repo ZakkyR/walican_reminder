@@ -1,5 +1,10 @@
 <div id="member-{{ member.id }}" style="display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid #f0f0f0;">
-  <span>
+  <span style="display:flex;align-items:center;gap:8px;">
+    {% if member.discord_avatar_url %}
+      <img src="{{ member.discord_avatar_url }}" class="avatar" alt="{{ member.discord_username }}">
+    {% else %}
+      <span class="avatar-placeholder">{{ member.discord_username[0]|upper }}</span>
+    {% endif %}
     {{ member.discord_username }}
     {% if member.is_guest %}<span class="badge" style="background:#f0f0f0;color:#888;font-size:0.7rem;margin-left:4px;">未ログイン</span>{% endif %}
   </span>

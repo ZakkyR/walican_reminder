@@ -21,6 +21,18 @@
         {% if item.event.payment_deadline %}
           <div style="font-size:0.8rem; color:#888; margin-top:4px;">期限: {{ item.event.payment_deadline }}</div>
         {% endif %}
+        <div class="avatar-stack">
+          {% for ep in item.event.participants[:6] %}
+            {% if ep.user.discord_avatar_url %}
+              <img src="{{ ep.user.discord_avatar_url }}" class="avatar" title="{{ ep.user.discord_username }}">
+            {% else %}
+              <span class="avatar-placeholder" title="{{ ep.user.discord_username }}">{{ ep.user.discord_username[0]|upper }}</span>
+            {% endif %}
+          {% endfor %}
+          {% if item.event.participants|length > 6 %}
+            <span style="margin-left:6px;font-size:0.75rem;color:#888;">+{{ item.event.participants|length - 6 }}</span>
+          {% endif %}
+        </div>
       </div>
     </a>
   {% endfor %}
