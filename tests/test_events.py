@@ -1,4 +1,5 @@
 from app.models.event import Event, EventParticipant, EventStatus
+from app.models.notification import NotificationSetting, NotificationMode
 from app.models.user import User
 
 def test_create_event(auth_client, db, user):
@@ -99,6 +100,26 @@ def test_cannot_remove_creator_from_event(auth_client, db, user):
 
     response = auth_client.delete(f"/events/{event.id}/participants/{user.id}", follow_redirects=False)
     assert response.status_code == 400
+
+
+def test_delete_event_with_notification_setting(auth_client, db, user):
+    event = Event(name="通知付き削除テスト", created_by=user.id)
+    db.add(event)
+    db.add(EventParticipant(event_id=event.id, user_id=user.id))
+    db.flush()
+    db.add(NotificationSetting(
+        event_id=event.id,
+        discord_channel_id="111",
+        mode=NotificationMode.scheduled,
+        schedule_cron="0 12 * * 1",
+    ))
+    db.commit()
+    db.refresh(event)
+
+    response = auth_client.delete(f"/events/{event.id}", follow_redirects=False)
+    assert response.status_code in (200, 204, 302, 303)
+    assert db.query(Event).filter(Event.id == event.id).first() is None
+    assert db.query(NotificationSetting).filter(NotificationSetting.event_id == event.id).first() is None
 
 
 def test_complete_event(auth_client, db, user):
