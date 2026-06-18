@@ -4,6 +4,11 @@ on:
   push:
     branches:
       - master
+    paths:
+      - 'app/**'
+      - 'alembic/**'
+      - 'requirements.txt'
+      - 'startup.sh'
   workflow_dispatch:
 
 jobs:

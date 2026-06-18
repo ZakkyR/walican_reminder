@@ -4,6 +4,13 @@ on:
   push:
     branches:
       - master
+    paths:
+      - 'function_app.py'
+      - 'host.json'
+      - 'app/models/**'
+      - 'app/database.py'
+      - 'app/config.py'
+      - 'requirements.txt'
   workflow_dispatch:
 
 jobs:
