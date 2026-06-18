@@ -85,6 +85,33 @@ async def delete_expense(
     return response
 
 
+@router.get("/{expense_id}/edit-form", response_class=HTMLResponse)
+async def edit_expense_form(
+    event_id: str,
+    expense_id: str,
+    request: Request,
+    db: Session = Depends(get_db),
+    user: User = Depends(get_current_user),
+):
+    from fastapi.responses import HTMLResponse
+    from app.models.event import EventParticipant
+    _require_participant(event_id, user, db)
+    expense = db.get(Expense, expense_id)
+    if not expense or expense.event_id != event_id:
+        raise HTTPException(status_code=404)
+    participants = [ep.user for ep in db.query(EventParticipant).filter(EventParticipant.event_id == event_id).all()]
+    ep_rows = db.query(EventParticipant).filter(EventParticipant.event_id == event_id).all()
+    display_names = {ep.user_id: ep.display_name or ep.user.discord_username for ep in ep_rows}
+    expense_participant_map = {ep.user_id: ep.custom_amount for ep in expense.participants}
+    return templates.TemplateResponse(request, "events/partials/expense_edit_form.html", {
+        "event_id": event_id,
+        "expense": expense,
+        "participants": participants,
+        "display_names": display_names,
+        "expense_participant_map": expense_participant_map,
+    })
+
+
 @router.post("/{expense_id}/edit")
 async def update_expense(
     event_id: str,

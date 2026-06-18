@@ -47,11 +47,17 @@
           {% for ep in expense.participants %}{{ display_names.get(ep.user.id, ep.user.discord_username) }}{% if ep.custom_amount %}(¥{{ ep.custom_amount|int }}){% endif %}{% if not loop.last %}、{% endif %}{% endfor %}
         </div>
       </div>
-      <button type="button" class="btn btn-danger" style="padding:4px 10px;font-size:0.8rem;"
-        hx-delete="/events/{{ event.id }}/expenses/{{ expense.id }}"
-        hx-confirm="削除しますか？"
-        hx-target="closest .card"
-        hx-swap="outerHTML">削除</button>
+      <div style="display:flex;gap:6px;">
+        <button type="button" class="btn btn-secondary" style="padding:4px 10px;font-size:0.8rem;"
+          hx-get="/events/{{ event.id }}/expenses/{{ expense.id }}/edit-form"
+          hx-target="closest .card"
+          hx-swap="outerHTML">編集</button>
+        <button type="button" class="btn btn-danger" style="padding:4px 10px;font-size:0.8rem;"
+          hx-delete="/events/{{ event.id }}/expenses/{{ expense.id }}"
+          hx-confirm="削除しますか？"
+          hx-target="closest .card"
+          hx-swap="outerHTML">削除</button>
+      </div>
     </div>
   </div>
 {% else %}
