@@ -177,6 +177,8 @@ async def import_create(
                 db.add(ExpenseParticipant(expense_id=expense.id, user_id=uid))
 
     db.commit()
+    from app.services.settlement import apply_settlement
+    apply_settlement(event.id, db)
     return RedirectResponse(f"/events/{event.id}", status_code=303)
 
 
