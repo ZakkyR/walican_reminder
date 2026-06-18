@@ -93,21 +93,15 @@ async def import_preview(
     except (KeyError, ValueError) as e:
         raise HTTPException(status_code=422, detail=f"CSVの形式が正しくありません: {e}")
 
-    registered_users = db.query(User).filter(User.is_guest == False).order_by(User.discord_username).all()  # noqa: E712
     names_indexed = list(enumerate(sorted(names)))
 
-    # Pre-match: if a registered user's discord_username matches a CSV name, pre-select it
-    name_to_user_id: dict[str, str] = {}
-    for u in registered_users:
-        if u.discord_username in names:
-            name_to_user_id[u.discord_username] = u.id
-
+    # Pre-fill: CSV name that matches a registered user's username stays as-is (correct)
+    # CSV name that matches no registered user also stays as-is (will become guest)
     return templates.TemplateResponse(request, "events/import_preview.html", {
         "user": user,
         "rows": rows,
         "names_indexed": names_indexed,
-        "registered_users": registered_users,
-        "name_to_user_id": name_to_user_id,
+        "matched_names": {},  # text inputs pre-filled with CSV name by default
         "rows_json": json.dumps(rows, ensure_ascii=False),
     })
 
@@ -130,20 +124,18 @@ async def import_create(
         csv_name = form.get(f"csv_name_{i}")
         if csv_name is None:
             break
-        mapping_value = form.get(f"mapping_{i}", "")
-        if mapping_value and not mapping_value.startswith("guest:"):
-            # Critical: validate the submitted UUID is a real non-guest user
-            resolved = db.get(User, mapping_value)
-            if not resolved or resolved.is_guest:
-                raise HTTPException(status_code=400, detail="不正なユーザーIDが送信されました")
-            name_to_uid[csv_name] = resolved.id
-        else:
-            target = db.query(User).filter(User.discord_username == csv_name, User.is_guest == True).first()  # noqa: E712
-            if not target:
-                target = User(discord_id=f"guest_{uuid.uuid4().hex}", discord_username=csv_name, is_guest=True)
-                db.add(target)
-                db.flush()
-            name_to_uid[csv_name] = target.id
+        # mapping_name_N is the username text the user typed (or the CSV name pre-filled)
+        mapping_name = (form.get(f"mapping_name_{i}") or csv_name).strip() or csv_name
+
+        # Look up registered user first, then guest, then create guest
+        target = db.query(User).filter(User.discord_username == mapping_name, User.is_guest == False).first()  # noqa: E712
+        if not target:
+            target = db.query(User).filter(User.discord_username == mapping_name, User.is_guest == True).first()  # noqa: E712
+        if not target:
+            target = User(discord_id=f"guest_{uuid.uuid4().hex}", discord_username=mapping_name, is_guest=True)
+            db.add(target)
+            db.flush()
+        name_to_uid[csv_name] = target.id
 
     # Critical: validate rows from hidden field — never trust client-submitted amounts/titles
     known_names = set(name_to_uid.keys())

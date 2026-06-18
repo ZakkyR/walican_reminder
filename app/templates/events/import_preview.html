@@ -24,24 +24,25 @@
   <div class="card" style="margin-bottom:16px;">
     <h3 style="margin-bottom:12px;">名前の紐づけ</h3>
     <p style="font-size:0.85rem;color:#888;margin-bottom:12px;">
-      CSV の名前をアプリのユーザーに対応させてください。Discord 登録済みユーザーは自動で一致候補が表示されます。
+      CSV の名前に対応するアプリのユーザー名を入力してください。空欄のままにするとゲストとして追加されます。
     </p>
-    <div style="display:grid;grid-template-columns:1fr auto 1fr;align-items:center;gap:8px 12px;">
+    <div style="display:grid;grid-template-columns:1fr auto 1fr auto;align-items:center;gap:8px 10px;">
       <div style="font-size:0.8rem;font-weight:600;color:#888;">CSVの名前</div>
       <div></div>
-      <div style="font-size:0.8rem;font-weight:600;color:#888;">アプリのユーザー</div>
+      <div style="font-size:0.8rem;font-weight:600;color:#888;">アプリのユーザー名（空欄でゲスト）</div>
+      <div></div>
       {% for i, name in names_indexed %}
         <input type="hidden" name="csv_name_{{ i }}" value="{{ name }}">
         <span style="font-weight:500;">{{ name }}</span>
         <span style="color:#aaa;">→</span>
-        <select name="mapping_{{ i }}" style="padding:6px 8px;border:1px solid #ddd;border-radius:6px;font-size:0.9rem;">
-          <option value="guest:{{ name }}">ゲストとして追加（{{ name }}）</option>
-          {% for u in registered_users %}
-            <option value="{{ u.id }}" {% if name_to_user_id.get(name) == u.id %}selected{% endif %}>
-              {{ u.discord_username }}{% if u.discord_username == name %} ✓{% endif %}
-            </option>
-          {% endfor %}
-        </select>
+        <input type="text" name="mapping_name_{{ i }}"
+               value="{{ matched_names.get(name, name) }}"
+               placeholder="ゲストとして追加"
+               style="padding:6px 8px;border:1px solid #ddd;border-radius:6px;font-size:0.9rem;">
+        <button type="button" class="btn btn-secondary"
+                style="padding:4px 10px;font-size:0.8rem;white-space:nowrap;"
+                data-username="{{ user.discord_username | e }}"
+                onclick="this.previousElementSibling.value=this.dataset.username">自分</button>
       {% endfor %}
     </div>
   </div>
