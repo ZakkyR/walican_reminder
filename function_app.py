@@ -46,7 +46,7 @@ def _build_message(event, unpaid_payments: list, app_base_url: str) -> str:
         lines.append(
             f"  • {p.from_user.discord_username} → {p.to_user.discord_username}: ￥{amount:,}"
         )
-    lines += ["", f"精算状況: {app_base_url}/events/{event.id}?tab=payments"]
+    lines += ["", f"精算状況: <{app_base_url}/events/{event.id}?tab=payments>"]
     if mentions:
         lines += ["", " ".join(mentions) + " よろしくお願いします！"]
     return "\n".join(lines)
