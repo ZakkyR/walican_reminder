@@ -59,6 +59,7 @@
     <div style="display:flex;gap:8px;">
       <input type="text" id="my-display-name-input" name="display_name"
              value="{{ my_display_name or user.discord_username }}"
+             data-original="{{ my_display_name or user.discord_username }}"
              placeholder="表示名"
              style="flex:1;padding:8px;border:1px solid #ddd;border-radius:6px;">
       <button type="submit" class="btn btn-primary">設定</button>
@@ -68,12 +69,13 @@
 
 <script>
 async function fetchMyNick(guildId) {
-  if (!guildId) return;
+  const inp = document.getElementById('my-display-name-input');
+  if (!guildId) { inp.value = inp.dataset.original; return; }
   try {
     const r = await fetch('/api/my-nickname?guild_id=' + encodeURIComponent(guildId));
     if (r.ok) {
       const nick = await r.text();
-      if (nick) document.getElementById('my-display-name-input').value = nick;
+      inp.value = nick || inp.dataset.original;
     }
   } catch (e) {}
 }
