@@ -33,9 +33,9 @@
           {% endif %}
           <label for="ep_{{ p.id }}" style="margin:0;flex:1;">{{ display_names.get(p.id, p.discord_username) }}</label>
           <input type="number" name="custom_{{ p.id }}"
-                 placeholder="カスタム金額"
+                 placeholder="金額(円)"
                  value="{{ expense_participant_map[p.id]|int if p.id in expense_participant_map and expense_participant_map[p.id] else '' }}"
-                 style="width:110px;">
+                 style="width:120px;">
         </div>
       {% endfor %}
     </div>

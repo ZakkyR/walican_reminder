@@ -29,7 +29,7 @@
             <span class="avatar-placeholder">{{ display_names.get(p.id, p.discord_username)[0]|upper }}</span>
           {% endif %}
           <label for="p_{{ p.id }}" style="margin:0;flex:1;">{{ display_names.get(p.id, p.discord_username) }}</label>
-          <input type="number" name="custom_{{ p.id }}" placeholder="カスタム金額" style="width:110px;">
+          <input type="number" name="custom_{{ p.id }}" placeholder="金額(円)" style="width:120px;">
         </div>
       {% endfor %}
     </div>
