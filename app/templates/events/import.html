@@ -1,0 +1,21 @@
+{% extends "base.html" %}
+{% block title %}Walica CSVインポート — Walican Reminder{% endblock %}
+{% block content %}
+<div class="page-header">
+  <h1>Walica CSVインポート</h1>
+  <a href="/" class="btn btn-secondary">← 戻る</a>
+</div>
+
+<div class="card">
+  <p style="margin-bottom:16px;color:#555;font-size:0.9rem;">
+    Walica からエクスポートした CSV ファイルをアップロードすると、支出データを一括でインポートできます。
+  </p>
+  <form method="post" action="/events/import/preview" enctype="multipart/form-data">
+    <div class="form-group">
+      <label>CSV ファイル *</label>
+      <input type="file" name="file" accept=".csv" required>
+    </div>
+    <button type="submit" class="btn btn-primary">次へ（内容確認）</button>
+  </form>
+</div>
+{% endblock %}

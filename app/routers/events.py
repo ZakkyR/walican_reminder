@@ -1,6 +1,9 @@
+import csv
+import io
+import json
 import uuid
 from datetime import date
-from fastapi import APIRouter, Request, Depends, Form, HTTPException, Response
+from fastapi import APIRouter, Request, Depends, Form, HTTPException, Response, UploadFile, File
 from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
 from sqlalchemy.orm import Session
@@ -9,6 +12,7 @@ from app.database import get_db
 from app.routers.auth import get_current_user
 from app.models.user import User
 from app.models.event import Event, EventParticipant, EventStatus
+from app.models.expense import Expense, ExpenseParticipant
 from app.models.friend_group import FriendGroup, FriendGroupMember
 
 router = APIRouter(prefix="/events")
@@ -35,6 +39,120 @@ def _require_event_creator(event_id: str, user: User, db: Session) -> Event:
     if event.created_by != user.id:
         raise HTTPException(status_code=403)
     return event
+
+
+@router.get("/import", response_class=HTMLResponse)
+async def import_form(request: Request, user: User = Depends(get_current_user)):
+    return templates.TemplateResponse(request, "events/import.html", {"user": user})
+
+
+@router.post("/import/preview", response_class=HTMLResponse)
+async def import_preview(
+    request: Request,
+    file: UploadFile = File(...),
+    db: Session = Depends(get_db),
+    user: User = Depends(get_current_user),
+):
+    raw = await file.read()
+    try:
+        text = raw.decode("utf-8-sig")
+    except UnicodeDecodeError:
+        text = raw.decode("shift-jis")
+
+    reader = csv.DictReader(io.StringIO(text))
+    rows = []
+    names: set[str] = set()
+    for row in reader:
+        paid_by = row["払った人"].strip()
+        participants = [n.strip() for n in row["借りている人"].split("/") if n.strip()]
+        rows.append({
+            "date": row["登録日"],
+            "title": row["品目名"].strip(),
+            "amount": int(row["金額"]),
+            "paid_by": paid_by,
+            "participants": participants,
+        })
+        names.add(paid_by)
+        names.update(participants)
+
+    registered_users = db.query(User).filter(User.is_guest == False).order_by(User.discord_username).all()  # noqa: E712
+    names_indexed = list(enumerate(sorted(names)))
+
+    # Pre-match: if a registered user's discord_username matches a CSV name, pre-select it
+    name_to_user_id: dict[str, str] = {}
+    for u in registered_users:
+        if u.discord_username in names:
+            name_to_user_id[u.discord_username] = u.id
+
+    return templates.TemplateResponse(request, "events/import_preview.html", {
+        "user": user,
+        "rows": rows,
+        "names_indexed": names_indexed,
+        "registered_users": registered_users,
+        "name_to_user_id": name_to_user_id,
+        "rows_json": json.dumps(rows, ensure_ascii=False),
+    })
+
+
+@router.post("/import/create")
+async def import_create(
+    request: Request,
+    db: Session = Depends(get_db),
+    user: User = Depends(get_current_user),
+):
+    form = await request.form()
+    event_name = (form.get("event_name") or "Walicaインポート").strip()
+    payment_deadline_str = form.get("payment_deadline") or None
+    rows_json = form.get("rows_json", "[]")
+    rows = json.loads(rows_json)
+
+    # Rebuild name→user mapping from indexed fields
+    name_to_uid: dict[str, str] = {}
+    i = 0
+    while True:
+        csv_name = form.get(f"csv_name_{i}")
+        if csv_name is None:
+            break
+        mapping_value = form.get(f"mapping_{i}", "")
+        if mapping_value and not mapping_value.startswith("guest:"):
+            name_to_uid[csv_name] = mapping_value
+        else:
+            target = db.query(User).filter(User.discord_username == csv_name, User.is_guest == True).first()  # noqa: E712
+            if not target:
+                target = User(discord_id=f"guest_{uuid.uuid4().hex}", discord_username=csv_name, is_guest=True)
+                db.add(target)
+                db.flush()
+            name_to_uid[csv_name] = target.id
+        i += 1
+
+    deadline = date.fromisoformat(payment_deadline_str) if payment_deadline_str else None
+    event = Event(name=event_name, created_by=user.id, payment_deadline=deadline)
+    db.add(event)
+    db.flush()
+
+    participant_ids = set(name_to_uid.values()) | {user.id}
+    for uid in participant_ids:
+        db.add(EventParticipant(event_id=event.id, user_id=uid))
+
+    for row in rows:
+        payer_id = name_to_uid.get(row["paid_by"])
+        if not payer_id:
+            continue
+        expense = Expense(
+            event_id=event.id,
+            title=row["title"],
+            total_amount=row["amount"],
+            paid_by=payer_id,
+        )
+        db.add(expense)
+        db.flush()
+        for pname in row["participants"]:
+            uid = name_to_uid.get(pname)
+            if uid:
+                db.add(ExpenseParticipant(expense_id=expense.id, user_id=uid))
+
+    db.commit()
+    return RedirectResponse(f"/events/{event.id}", status_code=303)
 
 
 @router.get("/new", response_class=HTMLResponse)
