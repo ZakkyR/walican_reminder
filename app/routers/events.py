@@ -46,6 +46,10 @@ async def import_form(request: Request, user: User = Depends(get_current_user)):
     return templates.TemplateResponse(request, "events/import.html", {"user": user})
 
 
+_MAX_CSV_BYTES = 1 * 1024 * 1024  # 1 MB
+_REQUIRED_COLUMNS = {"登録日", "品目名", "金額", "払った人", "借りている人"}
+
+
 @router.post("/import/preview", response_class=HTMLResponse)
 async def import_preview(
     request: Request,
@@ -53,27 +57,41 @@ async def import_preview(
     db: Session = Depends(get_db),
     user: User = Depends(get_current_user),
 ):
-    raw = await file.read()
+    raw = await file.read(_MAX_CSV_BYTES + 1)
+    if len(raw) > _MAX_CSV_BYTES:
+        raise HTTPException(status_code=413, detail="ファイルが大きすぎます（上限1MB）")
+
     try:
         text = raw.decode("utf-8-sig")
     except UnicodeDecodeError:
-        text = raw.decode("shift-jis")
+        try:
+            text = raw.decode("shift-jis")
+        except UnicodeDecodeError:
+            raise HTTPException(status_code=422, detail="文字コードを認識できません（UTF-8またはShift-JISのCSVを使用してください）")
 
-    reader = csv.DictReader(io.StringIO(text))
-    rows = []
-    names: set[str] = set()
-    for row in reader:
-        paid_by = row["払った人"].strip()
-        participants = [n.strip() for n in row["借りている人"].split("/") if n.strip()]
-        rows.append({
-            "date": row["登録日"],
-            "title": row["品目名"].strip(),
-            "amount": int(row["金額"]),
-            "paid_by": paid_by,
-            "participants": participants,
-        })
-        names.add(paid_by)
-        names.update(participants)
+    try:
+        reader = csv.DictReader(io.StringIO(text))
+        rows = []
+        names: set[str] = set()
+        for row in reader:
+            missing = _REQUIRED_COLUMNS - set(row.keys())
+            if missing:
+                raise HTTPException(status_code=422, detail=f"CSVの列が不足しています: {', '.join(missing)}")
+            paid_by = row["払った人"].strip()
+            participants = [n.strip() for n in row["借りている人"].split("/") if n.strip()]
+            rows.append({
+                "date": row["登録日"],
+                "title": row["品目名"].strip(),
+                "amount": int(row["金額"]),
+                "paid_by": paid_by,
+                "participants": participants,
+            })
+            names.add(paid_by)
+            names.update(participants)
+    except HTTPException:
+        raise
+    except (KeyError, ValueError) as e:
+        raise HTTPException(status_code=422, detail=f"CSVの形式が正しくありません: {e}")
 
     registered_users = db.query(User).filter(User.is_guest == False).order_by(User.discord_username).all()  # noqa: E712
     names_indexed = list(enumerate(sorted(names)))
@@ -106,16 +124,19 @@ async def import_create(
     rows_json = form.get("rows_json", "[]")
     rows = json.loads(rows_json)
 
-    # Rebuild name→user mapping from indexed fields
+    # Rebuild name→user mapping from indexed fields (cap at 500 to prevent amplification)
     name_to_uid: dict[str, str] = {}
-    i = 0
-    while True:
+    for i in range(500):
         csv_name = form.get(f"csv_name_{i}")
         if csv_name is None:
             break
         mapping_value = form.get(f"mapping_{i}", "")
         if mapping_value and not mapping_value.startswith("guest:"):
-            name_to_uid[csv_name] = mapping_value
+            # Critical: validate the submitted UUID is a real non-guest user
+            resolved = db.get(User, mapping_value)
+            if not resolved or resolved.is_guest:
+                raise HTTPException(status_code=400, detail="不正なユーザーIDが送信されました")
+            name_to_uid[csv_name] = resolved.id
         else:
             target = db.query(User).filter(User.discord_username == csv_name, User.is_guest == True).first()  # noqa: E712
             if not target:
@@ -123,7 +144,19 @@ async def import_create(
                 db.add(target)
                 db.flush()
             name_to_uid[csv_name] = target.id
-        i += 1
+
+    # Critical: validate rows from hidden field — never trust client-submitted amounts/titles
+    known_names = set(name_to_uid.keys())
+    for row in rows:
+        if not isinstance(row.get("amount"), int) or row["amount"] <= 0:
+            raise HTTPException(status_code=400, detail="不正な金額が含まれています")
+        if not isinstance(row.get("title"), str) or len(row["title"]) > 200:
+            raise HTTPException(status_code=400, detail="不正な品目名が含まれています")
+        if row.get("paid_by") not in known_names:
+            raise HTTPException(status_code=400, detail="不正な払った人が含まれています")
+        for pname in row.get("participants", []):
+            if pname not in known_names:
+                raise HTTPException(status_code=400, detail="不正な参加者名が含まれています")
 
     deadline = date.fromisoformat(payment_deadline_str) if payment_deadline_str else None
     event = Event(name=event_name, created_by=user.id, payment_deadline=deadline)
@@ -243,6 +276,8 @@ async def add_participant(
     user: User = Depends(get_current_user),
 ):
     event = _require_event_creator(event_id, user, db)
+    if event.status == EventStatus.completed:
+        return HTMLResponse('<p style="color:#e55;margin-top:8px;">完了済みイベントは編集できません。</p>', status_code=200)
 
     name = name.strip()
     if not name or len(name) > 50:
@@ -283,8 +318,18 @@ async def remove_participant(
     user: User = Depends(get_current_user),
 ):
     event = _require_event_creator(event_id, user, db)
+    if event.status == EventStatus.completed:
+        raise HTTPException(status_code=400, detail="完了済みイベントは編集できません")
     if participant_user_id == event.created_by:
         raise HTTPException(status_code=400, detail="作成者は削除できません")
+    has_expenses = db.query(ExpenseParticipant).join(
+        Expense, Expense.id == ExpenseParticipant.expense_id
+    ).filter(
+        Expense.event_id == event_id,
+        ExpenseParticipant.user_id == participant_user_id,
+    ).first()
+    if has_expenses:
+        raise HTTPException(status_code=400, detail="この参加者は支出に含まれているため削除できません")
     db.query(EventParticipant).filter(
         EventParticipant.event_id == event_id,
         EventParticipant.user_id == participant_user_id,
