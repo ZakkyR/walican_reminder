@@ -5,7 +5,9 @@
   <h1>{{ event.name }}</h1>
   <div style="display:flex;gap:8px;flex-wrap:wrap;">
     {% if is_creator %}
+      {% if event.status.value == "active" %}
       <a href="/events/{{ event.id }}/edit" class="btn btn-secondary">編集</a>
+      {% endif %}
       <button class="btn btn-danger"
         hx-delete="/events/{{ event.id }}"
         hx-confirm="イベント「{{ event.name }}」を削除しますか？支出・精算情報も全て削除されます。">削除</button>
