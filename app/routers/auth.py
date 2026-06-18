@@ -36,24 +36,39 @@ async def auth_callback(request: Request, db: Session = Depends(get_db)):
     discord_user = await oauth.discord.get("users/@me", token=token)
     data = discord_user.json()
 
+    avatar_url = (
+        f"https://cdn.discordapp.com/avatars/{data['id']}/{data['avatar']}.png"
+        if data.get("avatar") else None
+    )
+
     user = db.query(User).filter(User.discord_id == data["id"]).first()
     if not user:
-        user = User(
-            discord_id=data["id"],
-            discord_username=data["username"],
-            discord_avatar_url=(
-                f"https://cdn.discordapp.com/avatars/{data['id']}/{data.get('avatar')}.png"
-                if data.get("avatar")
-                else None
-            ),
-        )
-        db.add(user)
-        db.commit()
-        db.refresh(user)
+        # ゲストユーザーが同名で存在する場合は昇格させる
+        guest = db.query(User).filter(
+            User.discord_username == data["username"],
+            User.is_guest == True,  # noqa: E712
+        ).first()
+        if guest:
+            guest.discord_id = data["id"]
+            guest.is_guest = False
+            if avatar_url:
+                guest.discord_avatar_url = avatar_url
+            db.commit()
+            db.refresh(guest)
+            user = guest
+        else:
+            user = User(
+                discord_id=data["id"],
+                discord_username=data["username"],
+                discord_avatar_url=avatar_url,
+            )
+            db.add(user)
+            db.commit()
+            db.refresh(user)
     else:
         user.discord_username = data["username"]
-        if data.get("avatar"):
-            user.discord_avatar_url = f"https://cdn.discordapp.com/avatars/{data['id']}/{data['avatar']}.png"
+        if avatar_url:
+            user.discord_avatar_url = avatar_url
         db.commit()
 
     # Store user's guild list (replace existing entries)
