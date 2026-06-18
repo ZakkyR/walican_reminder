@@ -52,10 +52,13 @@ async def send_now(
 ):
     _require_participant(event_id, user, db)
     if settings.functions_url and settings.functions_key:
-        async with httpx.AsyncClient() as client:
-            await client.post(
-                f"{settings.functions_url}/api/notify/{event_id}",
-                headers={"x-functions-key": settings.functions_key},
-                timeout=10,
-            )
+        try:
+            async with httpx.AsyncClient() as client:
+                await client.post(
+                    f"{settings.functions_url}/api/notify/{event_id}",
+                    headers={"x-functions-key": settings.functions_key},
+                    timeout=10,
+                )
+        except httpx.HTTPError:
+            pass
     return RedirectResponse(f"/events/{event_id}?tab=notification", status_code=303)

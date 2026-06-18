@@ -8,6 +8,7 @@ from app.routers.auth import get_current_user
 from app.routers.events import _require_participant
 from app.models.user import User
 from app.models.expense import Expense, ExpenseParticipant
+from app.models.event import EventParticipant
 from app.services.settlement import apply_settlement
 
 router = APIRouter(prefix="/events/{event_id}/expenses")
@@ -26,6 +27,17 @@ async def add_expense(
     user: User = Depends(get_current_user),
 ):
     _require_participant(event_id, user, db)
+
+    # Validate paid_by and participant_ids belong to this event
+    valid_ids = {
+        str(ep.user_id)
+        for ep in db.query(EventParticipant).filter(EventParticipant.event_id == event_id).all()
+    }
+    if paid_by not in valid_ids:
+        raise HTTPException(status_code=400, detail="立替者はイベント参加者である必要があります")
+    for uid in participant_ids:
+        if uid not in valid_ids:
+            raise HTTPException(status_code=400, detail=f"参加者 {uid} はイベントのメンバーではありません")
 
     try:
         amount = Decimal(total_amount)
@@ -71,3 +83,59 @@ async def delete_expense(
     response = Response(status_code=204)
     response.headers["HX-Redirect"] = f"/events/{event_id}?tab=expenses"
     return response
+
+
+@router.post("/{expense_id}/edit")
+async def update_expense(
+    event_id: str,
+    expense_id: str,
+    request: Request,
+    title: str = Form(...),
+    total_amount: str = Form(...),
+    paid_by: str = Form(...),
+    participant_ids: list[str] = Form(...),
+    db: Session = Depends(get_db),
+    user: User = Depends(get_current_user),
+):
+    _require_participant(event_id, user, db)
+    expense = db.get(Expense, expense_id)
+    if not expense or expense.event_id != event_id:
+        raise HTTPException(status_code=404)
+
+    try:
+        amount = Decimal(total_amount)
+        if amount <= 0:
+            raise ValueError
+    except (InvalidOperation, ValueError):
+        raise HTTPException(status_code=400, detail="金額が無効です")
+
+    valid_ids = {
+        str(ep.user_id)
+        for ep in db.query(EventParticipant).filter(EventParticipant.event_id == event_id).all()
+    }
+    if paid_by not in valid_ids:
+        raise HTTPException(status_code=400, detail="立替者はイベント参加者である必要があります")
+
+    expense.title = title
+    expense.total_amount = amount
+    expense.paid_by = paid_by
+
+    db.query(ExpenseParticipant).filter(ExpenseParticipant.expense_id == expense_id).delete()
+    db.flush()
+
+    form_data = await request.form()
+    for uid in participant_ids:
+        if uid not in valid_ids:
+            raise HTTPException(status_code=400, detail=f"参加者 {uid} はイベントのメンバーではありません")
+        custom_str = form_data.get(f"custom_{uid}", "")
+        custom = None
+        if custom_str:
+            try:
+                custom = Decimal(custom_str)
+            except InvalidOperation:
+                raise HTTPException(status_code=400, detail=f"カスタム金額が無効です: {custom_str}")
+        db.add(ExpenseParticipant(expense_id=expense_id, user_id=uid, custom_amount=custom))
+
+    db.commit()
+    apply_settlement(event_id, db)
+    return RedirectResponse(f"/events/{event_id}?tab=expenses", status_code=303)

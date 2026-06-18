@@ -97,8 +97,6 @@ def apply_settlement(event_id: str, db) -> None:
         .filter(Payment.event_id == event_id, Payment.status == PaymentStatus.paid)
         .all()
     )
-    paid_set = {(p.from_user_id, p.to_user_id, p.amount) for p in paid_payments}
-
     # pending の既存支払いを削除
     db.query(Payment).filter(
         Payment.event_id == event_id,
