@@ -1,0 +1,23 @@
+{% if members %}
+  <div style="max-height:240px;overflow-y:auto;border:1px solid #e0e0e0;border-radius:6px;margin-top:8px;">
+    {% for m in members %}
+      <div style="display:flex;align-items:center;gap:8px;padding:6px 10px;border-bottom:1px solid #f0f0f0;">
+        {% if m.avatar_url %}
+          <img src="{{ m.avatar_url }}" class="avatar" alt="{{ m.username }}">
+        {% else %}
+          <span class="avatar-placeholder">{{ m.username[0]|upper }}</span>
+        {% endif %}
+        <span style="flex:1;font-size:0.9rem;">{{ m.username }}</span>
+        <button type="button" class="btn btn-secondary"
+                style="padding:2px 10px;font-size:0.8rem;"
+                data-name="{{ m.username | e }}"
+                onclick="
+                  var inp = document.getElementById('member-name-input');
+                  if (inp) { inp.value = this.dataset.name; inp.focus(); }
+                ">選択</button>
+      </div>
+    {% endfor %}
+  </div>
+{% else %}
+  <p style="color:#888;font-size:0.85rem;margin-top:8px;">メンバーが見つかりません。Bot がサーバーに参加しているか確認してください。</p>
+{% endif %}
