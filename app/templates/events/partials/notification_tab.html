@@ -7,23 +7,37 @@
 
     <div class="form-group">
       <label>Discord チャンネル *</label>
+
+      {% if ns and ns.discord_channel_id %}
+        <div style="background:#f0f4ff;border:1px solid #c7d2fe;border-radius:6px;padding:8px 12px;margin-bottom:10px;font-size:0.9rem;">
+          📢 現在の設定:
+          <strong>{{ ns.discord_guild_name or ns.discord_guild_id or '(不明)' }}</strong>
+          &nbsp;/&nbsp;#<strong>{{ ns.discord_channel_name or ns.discord_channel_id }}</strong>
+        </div>
+      {% endif %}
+
       {% if user_guilds %}
         <select id="ns-guild-select"
                 style="margin-bottom:6px;"
                 onchange="nsLoadChannels(this.value)">
           <option value="">サーバーを選択...</option>
           {% for guild in user_guilds %}
-            <option value="{{ guild.guild_id }}">{{ guild.guild_name }}</option>
+            <option value="{{ guild.guild_id }}" data-name="{{ guild.guild_name }}">{{ guild.guild_name }}</option>
           {% endfor %}
         </select>
       {% endif %}
-      <select id="ns-channel-select" name="discord_channel_id" required>
+      <select id="ns-channel-select" name="discord_channel_id" required onchange="nsOnChannelChange(this)">
         {% if ns and ns.discord_channel_id %}
-          <option value="{{ ns.discord_channel_id }}" selected>現在の設定（ID: {{ ns.discord_channel_id }}）</option>
+          <option value="{{ ns.discord_channel_id }}" selected>
+            {% if ns.discord_channel_name %}#{{ ns.discord_channel_name }}{% else %}ID: {{ ns.discord_channel_id }}{% endif %}
+          </option>
         {% else %}
           <option value="">← サーバーを選択してください</option>
         {% endif %}
       </select>
+      <input type="hidden" id="ns-guild-id-input" name="discord_guild_id" value="{{ ns.discord_guild_id if ns else '' }}">
+      <input type="hidden" id="ns-guild-name-input" name="discord_guild_name" value="{{ ns.discord_guild_name if ns else '' }}">
+      <input type="hidden" id="ns-channel-name-input" name="discord_channel_name" value="{{ ns.discord_channel_name if ns else '' }}">
       {% if not user_guilds %}
         <small style="color:#888;">
           <a href="/servers">Bot をサーバーに招待</a>するとここからチャンネルを選択できます。
@@ -109,50 +123,49 @@
 
 <script>
 async function nsLoadChannels(guildId) {
+  const guildSel = document.getElementById('ns-guild-select');
   const sel = document.getElementById('ns-channel-select');
+  document.getElementById('ns-channel-name-input').value = '';
+
   if (!guildId) {
-    sel.innerHTML = '';
-    const opt = document.createElement('option');
-    opt.value = '';
-    opt.textContent = '← サーバーを選択してください';
-    sel.appendChild(opt);
+    sel.innerHTML = '<option value="">← サーバーを選択してください</option>';
+    document.getElementById('ns-guild-id-input').value = '';
+    document.getElementById('ns-guild-name-input').value = '';
     return;
   }
-  sel.innerHTML = '';
-  const loading = document.createElement('option');
-  loading.value = '';
-  loading.textContent = '読み込み中...';
-  sel.appendChild(loading);
+
+  const selectedOption = guildSel.options[guildSel.selectedIndex];
+  document.getElementById('ns-guild-id-input').value = guildId;
+  document.getElementById('ns-guild-name-input').value = selectedOption.dataset.name || '';
+
+  sel.innerHTML = '<option value="">読み込み中...</option>';
   try {
     const r = await fetch('/api/channels?guild_id=' + encodeURIComponent(guildId));
     sel.innerHTML = '';
     if (!r.ok) {
-      const err = document.createElement('option');
-      err.value = '';
-      err.textContent = '取得失敗';
-      sel.appendChild(err);
+      sel.innerHTML = '<option value="">取得失敗</option>';
       return;
     }
     const channels = await r.json();
     if (channels.length === 0) {
-      const none = document.createElement('option');
-      none.value = '';
-      none.textContent = 'テキストチャンネルが見つかりません';
-      sel.appendChild(none);
+      sel.innerHTML = '<option value="">テキストチャンネルが見つかりません</option>';
       return;
     }
     channels.forEach(ch => {
       const opt = document.createElement('option');
       opt.value = ch.id;
       opt.textContent = '#' + ch.name;
+      opt.dataset.name = ch.name;
       sel.appendChild(opt);
     });
+    nsOnChannelChange(sel);
   } catch (e) {
-    sel.innerHTML = '';
-    const err = document.createElement('option');
-    err.value = '';
-    err.textContent = '取得失敗';
-    sel.appendChild(err);
+    sel.innerHTML = '<option value="">取得失敗</option>';
   }
+}
+
+function nsOnChannelChange(sel) {
+  const opt = sel.options[sel.selectedIndex];
+  document.getElementById('ns-channel-name-input').value = opt ? (opt.dataset.name || '') : '';
 }
 </script>

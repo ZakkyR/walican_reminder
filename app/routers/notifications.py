@@ -21,6 +21,9 @@ router = APIRouter(prefix="/events/{event_id}/notification")
 async def save_notification(
     event_id: str,
     discord_channel_id: str = Form(...),
+    discord_guild_id: Optional[str] = Form(None),
+    discord_guild_name: Optional[str] = Form(None),
+    discord_channel_name: Optional[str] = Form(None),
     mode: str = Form(...),
     schedule_cron: Optional[str] = Form(None),
     deadline_days_before: Optional[int] = Form(None),
@@ -37,6 +40,9 @@ async def save_notification(
         db.add(setting)
 
     setting.discord_channel_id = discord_channel_id
+    setting.discord_guild_id = discord_guild_id or None
+    setting.discord_guild_name = discord_guild_name or None
+    setting.discord_channel_name = discord_channel_name or None
     setting.mode = NotificationMode(mode)
     setting.schedule_cron = schedule_cron or None
     setting.deadline_days_before = deadline_days_before
