@@ -11,7 +11,8 @@ Discord OAuthでログインし、未払いメンバーへのリマインドをD
 - **支出管理** — 立替金額・参加者・カスタム負担額を記録
 - **精算計算** — 最小送金数アルゴリズムで誰が誰にいくら払うかを自動計算
 - **支払済みマーク** — 精算完了を記録、既払い分を保持したまま再計算
-- **Discord通知設定** — 未払いメンバーへの通知をDiscord Botで送信（Azure Functions）
+- **Discord通知** — 未払いメンバーへの通知をDiscord Botで送信（スケジュール・期限・日付指定）
+- **イベント完了管理** — 完了/再開の切り替え、完了時に通知を停止
 
 ## 技術スタック
 
@@ -21,12 +22,22 @@ Discord OAuthでログインし、未払いメンバーへのリマインドをD
 | テンプレート | Jinja2 3.1 |
 | フロントエンド | HTMX 1.9.12 + Vanilla CSS |
 | ORM | SQLAlchemy 2.x (sync) |
-| DB（本番） | Azure SQL Database |
-| DB（テスト） | SQLite |
+| DB | SQLite（App Service 永続ストレージ `/home/data/`） |
 | マイグレーション | Alembic |
 | 認証 | Discord OAuth2 (authlib) |
-| 通知スケジューラ | Azure Functions（別リポジトリ） |
+| 通知スケジューラ | Azure Functions（タイマー） → App Service `/internal/notify` |
 | ホスティング | Azure App Service F1（無料） |
+
+## アーキテクチャ
+
+```
+[Azure Functions タイマー]
+  └─ 毎日 00:00 UTC に POST /internal/notify
+       └─ [App Service] 通知ロジックを実行
+            └─ Discord Bot API でチャンネルにメッセージ送信
+```
+
+Azure Functions は HTTP 呼び出しのみ担当し、DBアクセスや通知ロジックはすべて App Service 側で処理します。
 
 ## ローカル開発セットアップ
 
@@ -56,8 +67,8 @@ pip install -r requirements.txt
 cp .env.example .env
 # .env を編集して各値を入力
 
-# 5. DBマイグレーション（SQLiteで動作確認する場合）
-DATABASE_URL=sqlite:///./dev.db alembic upgrade head
+# 5. DBマイグレーション
+alembic upgrade head
 
 # 6. 起動
 uvicorn app.main:app --reload
@@ -71,16 +82,16 @@ uvicorn app.main:app --reload
 
 | 変数名 | 説明 |
 |---|---|
-| `DATABASE_URL` | DB接続文字列（SQLite or Azure SQL） |
+| `DATABASE_URL` | DB接続文字列（省略時: `sqlite:///./test.db`） |
 | `DISCORD_CLIENT_ID` | Discord OAuthアプリのクライアントID |
 | `DISCORD_CLIENT_SECRET` | Discord OAuthアプリのクライアントシークレット |
-| `DISCORD_BOT_TOKEN` | Discord BotトークN |
+| `DISCORD_BOT_TOKEN` | Discord Botトークン |
 | `DISCORD_REDIRECT_URI` | OAuth2コールバックURL |
 | `SESSION_SECRET` | セッション署名用シークレット（64文字以上のランダム文字列） |
-| `FUNCTIONS_URL` | Azure FunctionsのベースURL（通知機能、任意） |
-| `FUNCTIONS_KEY` | Azure FunctionsのアクセスキーN（通知機能、任意） |
+| `APP_BASE_URL` | アプリのベースURL（通知メッセージのリンク生成に使用） |
+| `INTERNAL_NOTIFY_KEY` | `/internal/notify` エンドポイントの認証キー |
 
-`SESSION_SECRET` の生成例:
+`SESSION_SECRET` / `INTERNAL_NOTIFY_KEY` の生成例:
 ```bash
 python -c "import secrets; print(secrets.token_hex(32))"
 ```
@@ -104,32 +115,49 @@ az webapp create --name walican-reminder --resource-group walican-rg --plan wali
 az webapp config set --name walican-reminder --resource-group walican-rg --startup-file "startup.sh"
 ```
 
-### 2. Azure SQL Database の接続文字列を取得
-
-Azure Portal → SQL Database → 接続文字列 → ODBC からコピーし、`mssql+pyodbc://` 形式に変換:
-
-```
-mssql+pyodbc://user:password@server.database.windows.net/dbname?driver=ODBC+Driver+18+for+SQL+Server
-```
-
-### 3. 環境変数の設定
+### 2. 環境変数の設定
 
 ```bash
 az webapp config appsettings set --name walican-reminder --resource-group walican-rg --settings \
-  DATABASE_URL="mssql+pyodbc://..." \
+  DATABASE_URL="sqlite:////home/data/walican.db" \
   DISCORD_CLIENT_ID="..." \
   DISCORD_CLIENT_SECRET="..." \
   DISCORD_BOT_TOKEN="..." \
   DISCORD_REDIRECT_URI="https://walican-reminder.azurewebsites.net/auth/callback" \
-  SESSION_SECRET="$(python -c 'import secrets; print(secrets.token_hex(32))')"
+  SESSION_SECRET="$(python -c 'import secrets; print(secrets.token_hex(32))')" \
+  APP_BASE_URL="https://walican-reminder.azurewebsites.net" \
+  INTERNAL_NOTIFY_KEY="$(python -c 'import secrets; print(secrets.token_hex(32))')"
 ```
 
-### 4. デプロイ
+### 3. デプロイ
+
+GitHub Actions（推奨）または手動:
 
 ```bash
 zip -r deploy.zip . -x "*.git*" "__pycache__/*" "*.db" ".env"
 az webapp deployment source config-zip --name walican-reminder --resource-group walican-rg --src deploy.zip
 ```
+
+### 4. DBの初期化
+
+初回デプロイ時は `startup.sh` の `alembic upgrade head` が自動でテーブルを作成します。  
+既存データを Azure SQL から移行する場合は `scripts/migrate_to_sqlite.py` を使用してください。
+
+## Azure Functions のデプロイ
+
+Azure Functions（タイマートリガー）が毎日 09:00 JST に `POST /internal/notify` を呼び出します。
+
+```bash
+# Azure Functions Core Tools が必要
+func azure functionapp publish <FunctionApp名>
+```
+
+**Function App の環境変数:**
+
+| 変数名 | 値 |
+|---|---|
+| `APP_BASE_URL` | `https://walican-reminder.azurewebsites.net` |
+| `INTERNAL_NOTIFY_KEY` | App Service と同じ値 |
 
 ## テスト
 

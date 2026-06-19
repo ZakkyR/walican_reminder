@@ -1,4 +1,3 @@
-from urllib.parse import quote_plus
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -9,8 +8,6 @@ class Settings(BaseSettings):
     discord_bot_token: str = ""
     discord_redirect_uri: str = "http://localhost:8000/auth/callback"
     session_secret: str = "dev-secret-change-in-production"
-    functions_url: str = ""
-    functions_key: str = ""
     internal_notify_key: str = ""
     app_base_url: str = ""
 
@@ -22,11 +19,6 @@ class Settings(BaseSettings):
 
     @property
     def sqlalchemy_url(self) -> str:
-        # Azure Portal からコピーした生の ODBC 文字列をそのまま DATABASE_URL に設定できるよう変換する。
-        # 例: "Driver={ODBC Driver 18 for SQL Server};Server=tcp:...;Pwd=P@ss;..."
-        # → "mssql+pyodbc:///?odbc_connect=Driver%3D..."
-        if self.database_url.startswith("Driver="):
-            return f"mssql+pyodbc:///?odbc_connect={quote_plus(self.database_url)}"
         return self.database_url
 
 

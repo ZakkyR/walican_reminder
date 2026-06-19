@@ -1,9 +1,12 @@
+import logging
 from datetime import date
 from fastapi import APIRouter, Depends, Form
 from fastapi.responses import RedirectResponse
 from sqlalchemy.orm import Session
 from typing import Optional
 from app.config import settings
+
+logger = logging.getLogger(__name__)
 from app.database import get_db
 from app.routers.auth import get_current_user
 from app.routers.events import _require_event_creator
@@ -55,6 +58,5 @@ def send_now(
         try:
             notify_event(event_id, db, settings.discord_bot_token, settings.app_base_url.rstrip("/"))
         except Exception:
-            import logging
-            logging.getLogger(__name__).exception("send_now: notify_event failed for %s", event_id)
+            logger.exception("send_now: notify_event failed for %s", event_id)
     return RedirectResponse(f"/events/{event_id}?tab=notification", status_code=303)
