@@ -11,6 +11,8 @@ class Settings(BaseSettings):
     session_secret: str = "dev-secret-change-in-production"
     functions_url: str = ""
     functions_key: str = ""
+    internal_notify_key: str = ""
+    app_base_url: str = ""
 
     model_config = SettingsConfigDict(
         env_file=".env",

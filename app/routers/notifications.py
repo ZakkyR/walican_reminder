@@ -1,5 +1,4 @@
 from datetime import date
-import httpx
 from fastapi import APIRouter, Depends, Form
 from fastapi.responses import RedirectResponse
 from sqlalchemy.orm import Session
@@ -10,6 +9,7 @@ from app.routers.auth import get_current_user
 from app.routers.events import _require_event_creator
 from app.models.user import User
 from app.models.notification import NotificationSetting, NotificationMode
+from app.services.notifier import notify_event
 
 router = APIRouter(prefix="/events/{event_id}/notification")
 
@@ -51,14 +51,6 @@ async def send_now(
     user: User = Depends(get_current_user),
 ):
     _require_event_creator(event_id, user, db)
-    if settings.functions_url and settings.functions_key:
-        try:
-            async with httpx.AsyncClient() as client:
-                await client.post(
-                    f"{settings.functions_url}/api/notify/{event_id}",
-                    headers={"x-functions-key": settings.functions_key},
-                    timeout=10,
-                )
-        except httpx.HTTPError:
-            pass
+    if settings.discord_bot_token and settings.app_base_url:
+        notify_event(event_id, db, settings.discord_bot_token, settings.app_base_url.rstrip("/"))
     return RedirectResponse(f"/events/{event_id}?tab=notification", status_code=303)
