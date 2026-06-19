@@ -1,8 +1,15 @@
+import sentry_sdk
 from fastapi import FastAPI
 from fastapi.staticfiles import StaticFiles
 from starlette.middleware.sessions import SessionMiddleware
 from app.config import settings
 from app.routers import auth, home, groups, events, expenses, payments, notifications, api, servers, internal
+
+if settings.sentry_dsn:
+    sentry_sdk.init(
+        dsn=settings.sentry_dsn,
+        send_default_pii=False,
+    )
 
 app = FastAPI(title="Walican Reminder")
 app.add_middleware(SessionMiddleware, secret_key=settings.session_secret)
