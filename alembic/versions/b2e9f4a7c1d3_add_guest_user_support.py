@@ -16,18 +16,24 @@ depends_on: Union[str, Sequence[str], None] = None
 
 
 def upgrade() -> None:
-    # discord_id を長くする（guest_ プレフィックス付き UUID を格納するため）
-    op.alter_column('users', 'discord_id',
-                    type_=sa.String(50),
-                    existing_type=sa.String(20),
-                    existing_nullable=False)
-    # ゲストフラグを追加
+    is_sqlite = op.get_context().dialect.name == "sqlite"
+    if not is_sqlite:
+        # SQLite は動的型付けのため VARCHAR(20) → VARCHAR(50) は不要
+        op.alter_column('users', 'discord_id',
+                        type_=sa.String(50),
+                        existing_type=sa.String(20),
+                        existing_nullable=False)
     op.add_column('users', sa.Column('is_guest', sa.Boolean(), server_default=sa.text('0'), nullable=False))
 
 
 def downgrade() -> None:
-    op.drop_column('users', 'is_guest')
-    op.alter_column('users', 'discord_id',
-                    type_=sa.String(20),
-                    existing_type=sa.String(50),
-                    existing_nullable=False)
+    is_sqlite = op.get_context().dialect.name == "sqlite"
+    if is_sqlite:
+        with op.batch_alter_table('users') as batch_op:
+            batch_op.drop_column('is_guest')
+    else:
+        op.drop_column('users', 'is_guest')
+        op.alter_column('users', 'discord_id',
+                        type_=sa.String(20),
+                        existing_type=sa.String(50),
+                        existing_nullable=False)

@@ -16,6 +16,8 @@ depends_on: Union[str, Sequence[str], None] = None
 
 
 def upgrade() -> None:
+    if op.get_context().dialect.name == "sqlite":
+        return  # SQLite は型アフィニティで VARCHAR/NVARCHAR を同一視するため不要
     op.alter_column('users', 'discord_username',
                     type_=sa.Unicode(100),
                     existing_type=sa.String(100),
@@ -39,6 +41,8 @@ def upgrade() -> None:
 
 
 def downgrade() -> None:
+    if op.get_context().dialect.name == "sqlite":
+        return
     op.alter_column('friend_groups', 'name',
                     type_=sa.String(100),
                     existing_type=sa.Unicode(100),
