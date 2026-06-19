@@ -45,12 +45,16 @@ async def save_notification(
 
 
 @router.post("/send-now")
-async def send_now(
+def send_now(
     event_id: str,
     db: Session = Depends(get_db),
     user: User = Depends(get_current_user),
 ):
     _require_event_creator(event_id, user, db)
     if settings.discord_bot_token and settings.app_base_url:
-        notify_event(event_id, db, settings.discord_bot_token, settings.app_base_url.rstrip("/"))
+        try:
+            notify_event(event_id, db, settings.discord_bot_token, settings.app_base_url.rstrip("/"))
+        except Exception:
+            import logging
+            logging.getLogger(__name__).exception("send_now: notify_event failed for %s", event_id)
     return RedirectResponse(f"/events/{event_id}?tab=notification", status_code=303)

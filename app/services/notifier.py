@@ -82,7 +82,7 @@ def _should_notify(ns, now: datetime, today) -> bool:
         last = ns.last_notified_at
         if last is None:
             return True
-        return last.date() < today or (today - last.date()).days >= interval
+        return (today - last.date()).days >= interval
 
     return False
 
@@ -131,5 +131,6 @@ def run_all_notifications(db, bot_token: str, app_base_url: str) -> int:
                     sent += 1
         except Exception:
             logger.exception("Error processing event %s", ns.event_id)
+            db.rollback()
 
     return sent

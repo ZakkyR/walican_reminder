@@ -29,4 +29,4 @@ def notify_one(event_id: str, db: Session = Depends(get_db), _: None = Depends(_
     if not settings.discord_bot_token or not settings.app_base_url:
         raise HTTPException(status_code=500, detail="Missing configuration")
     sent = notify_event(event_id, db, settings.discord_bot_token, settings.app_base_url.rstrip("/"))
-    return JSONResponse({"sent": sent})
+    return JSONResponse({"sent": int(sent)})
