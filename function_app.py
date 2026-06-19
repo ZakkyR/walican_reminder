@@ -18,13 +18,18 @@ def notify_timer(timer: func.TimerRequest) -> None:
         logger.error("APP_BASE_URL or INTERNAL_NOTIFY_KEY not set")
         return
 
+    headers = {"x-internal-key": internal_notify_key}
+
     try:
-        resp = httpx.post(
-            f"{app_base_url}/internal/notify",
-            headers={"x-internal-key": internal_notify_key},
-            timeout=30,
-        )
+        resp = httpx.post(f"{app_base_url}/internal/notify", headers=headers, timeout=30)
         resp.raise_for_status()
         logger.info("notify_timer: %s", resp.text)
     except httpx.HTTPError as e:
         logger.error("notify_timer failed: %s", e)
+
+    try:
+        resp = httpx.post(f"{app_base_url}/internal/backup", headers=headers, timeout=30)
+        resp.raise_for_status()
+        logger.info("backup_timer: %s", resp.text)
+    except httpx.HTTPError as e:
+        logger.error("backup_timer failed: %s", e)

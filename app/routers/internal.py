@@ -5,6 +5,7 @@ from sqlalchemy.orm import Session
 from app.database import get_db
 from app.config import settings
 from app.services.notifier import notify_event, run_all_notifications
+from app.services.backup import run_backup
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/internal")
@@ -30,3 +31,15 @@ def notify_one(event_id: str, db: Session = Depends(get_db), _: None = Depends(_
         raise HTTPException(status_code=500, detail="Missing configuration")
     sent = notify_event(event_id, db, settings.discord_bot_token, settings.app_base_url.rstrip("/"))
     return JSONResponse({"sent": int(sent)})
+
+
+@router.post("/backup")
+def backup(_: None = Depends(_verify_key)):
+    if not settings.database_url.startswith("sqlite"):
+        return JSONResponse({"skipped": True, "reason": "not sqlite"})
+    db_path = settings.database_url.removeprefix("sqlite:///")
+    result = run_backup(db_path)
+    if result is None:
+        raise HTTPException(status_code=500, detail="Backup failed")
+    logger.info("backup: %s", result)
+    return JSONResponse({"path": result})
