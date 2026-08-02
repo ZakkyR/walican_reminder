@@ -76,3 +76,25 @@ def test_expense_total_shown_in_page(auth_client, db, user):
     assert response.status_code == 200
     assert "10,000" in response.text  # 合計 ¥10,000
     assert "合計" in response.text
+
+
+def test_export_csv(auth_client, db, user):
+    other = User(discord_id="903", discord_username="CsvOther")
+    db.add(other)
+    db.commit()
+    db.refresh(other)
+    event = _create_event_with_users(db, user, [other])
+    expense = Expense(event_id=event.id, title="交通費", total_amount=Decimal(4000), paid_by=user.id)
+    db.add(expense)
+    db.flush()
+    db.add(ExpenseParticipant(expense_id=expense.id, user_id=user.id))
+    db.add(ExpenseParticipant(expense_id=expense.id, user_id=other.id))
+    db.commit()
+
+    response = auth_client.get(f"/events/{event.id}/expenses/export.csv")
+    assert response.status_code == 200
+    assert "text/csv" in response.headers["content-type"]
+    text = response.content.decode("utf-8-sig")
+    assert "タイトル" in text
+    assert "交通費" in text
+    assert "4000" in text

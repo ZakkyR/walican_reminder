@@ -38,7 +38,12 @@
 </div>
 {% endif %}
 
-<h3 style="margin-bottom:12px;">支出一覧</h3>
+<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
+  <h3 style="margin:0;">支出一覧</h3>
+  {% if event.expenses %}
+  <a href="/events/{{ event.id }}/expenses/export.csv" class="btn btn-secondary" style="padding:4px 12px;font-size:0.85rem;">CSV出力</a>
+  {% endif %}
+</div>
 {% set total = namespace(value=0) %}
 {% for expense in event.expenses %}{% set total.value = total.value + expense.total_amount %}{% endfor %}
 {% if event.expenses %}

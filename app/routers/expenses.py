@@ -1,5 +1,7 @@
+import csv
+import io
 from fastapi import APIRouter, Request, Depends, Form, HTTPException, Response
-from fastapi.responses import RedirectResponse, HTMLResponse
+from fastapi.responses import RedirectResponse, HTMLResponse, StreamingResponse
 from fastapi.templating import Jinja2Templates
 from sqlalchemy.orm import Session
 from decimal import Decimal, InvalidOperation
@@ -64,6 +66,43 @@ async def add_expense(
     db.commit()
     apply_settlement(event_id, db)
     return RedirectResponse(f"/events/{event_id}?tab=expenses", status_code=303)
+
+
+@router.get("/export.csv")
+def export_expenses_csv(
+    event_id: str,
+    db: Session = Depends(get_db),
+    user: User = Depends(get_current_user),
+):
+    event = _require_participant(event_id, user, db)
+    ep_rows = db.query(EventParticipant).filter(EventParticipant.event_id == event_id).all()
+    display_names = {ep.user_id: ep.display_name or ep.user.discord_username for ep in ep_rows}
+
+    output = io.StringIO()
+    writer = csv.writer(output)
+    writer.writerow(["タイトル", "金額(円)", "立替者", "参加者", "登録日"])
+    for expense in event.expenses:
+        payer = display_names.get(expense.paid_by, expense.payer.discord_username)
+        participant_names = "・".join(
+            display_names.get(ep.user_id, ep.user.discord_username)
+            for ep in expense.participants
+        )
+        writer.writerow([
+            expense.title,
+            int(expense.total_amount),
+            payer,
+            participant_names,
+            expense.created_at.strftime("%Y/%m/%d"),
+        ])
+
+    bom = "﻿"
+    csv_bytes = (bom + output.getvalue()).encode("utf-8")
+    filename = f"expenses_{event_id[:8]}.csv"
+    return StreamingResponse(
+        iter([csv_bytes]),
+        media_type="text/csv; charset=utf-8-sig",
+        headers={"Content-Disposition": f"attachment; filename={filename}"},
+    )
 
 
 @router.delete("/{expense_id}")
