@@ -60,3 +60,19 @@ def test_delete_expense_recalculates(auth_client, db, user):
     response = auth_client.delete(f"/events/{event.id}/expenses/{expense.id}", follow_redirects=False)
     assert response.status_code in (200, 204, 302, 303)
     assert db.query(Payment).filter(Payment.event_id == event.id, Payment.status == PaymentStatus.pending).count() == 0
+
+
+def test_expense_total_shown_in_page(auth_client, db, user):
+    other = User(discord_id="901", discord_username="TotalOther")
+    db.add(other)
+    db.commit()
+    db.refresh(other)
+    event = _create_event_with_users(db, user, [other])
+    db.add(Expense(event_id=event.id, title="食費", total_amount=Decimal(3000), paid_by=user.id))
+    db.add(Expense(event_id=event.id, title="宿泊", total_amount=Decimal(7000), paid_by=user.id))
+    db.commit()
+
+    response = auth_client.get(f"/events/{event.id}?tab=expenses")
+    assert response.status_code == 200
+    assert "10,000" in response.text  # 合計 ¥10,000
+    assert "合計" in response.text

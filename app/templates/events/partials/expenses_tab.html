@@ -39,6 +39,13 @@
 {% endif %}
 
 <h3 style="margin-bottom:12px;">支出一覧</h3>
+{% set total = namespace(value=0) %}
+{% for expense in event.expenses %}{% set total.value = total.value + expense.total_amount %}{% endfor %}
+{% if event.expenses %}
+<div style="text-align:right;margin-bottom:8px;font-size:0.95rem;color:#555;">
+  合計 <strong>¥{{ "{:,}".format(total.value|int) }}</strong>
+</div>
+{% endif %}
 {% for expense in event.expenses %}
   <div class="card" style="margin-bottom:8px;">
     <div style="display:flex;justify-content:space-between;align-items:center;">
