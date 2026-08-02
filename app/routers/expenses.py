@@ -95,13 +95,12 @@ def export_expenses_csv(
             expense.created_at.strftime("%Y/%m/%d"),
         ])
 
-    bom = "﻿"
-    csv_bytes = (bom + output.getvalue()).encode("utf-8")
+    csv_bytes = output.getvalue().encode("utf-8-sig")
     filename = f"expenses_{event_id[:8]}.csv"
     return StreamingResponse(
         iter([csv_bytes]),
         media_type="text/csv; charset=utf-8-sig",
-        headers={"Content-Disposition": f"attachment; filename={filename}"},
+        headers={"Content-Disposition": f'attachment; filename="{filename}"'},
     )
 
 

@@ -77,4 +77,5 @@ def test_paid_at_shown_when_paid(auth_client, db, user):
 
     response = auth_client.get(f"/events/{event.id}?tab=payments")
     assert response.status_code == 200
-    assert "2026-06-21" in response.text or "06/21" in response.text or "精算日" in response.text
+    assert "2026/06/21" in response.text
+    assert "精算日" in response.text
