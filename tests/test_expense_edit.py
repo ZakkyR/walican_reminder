@@ -85,3 +85,32 @@ def test_edit_expense_with_custom_amount(auth_client, db, user):
         ExpenseParticipant.user_id == other.id,
     ).first()
     assert ep.custom_amount == Decimal(3000)
+
+
+def test_edit_expense_with_weight(auth_client, db, user):
+    event, expense, other = _setup(db, user)
+
+    auth_client.post(f"/events/{event.id}/expenses/{expense.id}/edit", data={
+        "title": "食費",
+        "total_amount": "9000",
+        "paid_by": user.id,
+        "participant_ids": [user.id, other.id],
+        f"weight_{user.id}": "2",
+    }, follow_redirects=False)
+
+    payment = db.query(Payment).filter(Payment.event_id == event.id).first()
+    assert payment.amount == Decimal(3000)
+
+
+def test_edit_form_shows_existing_weight(auth_client, db, user):
+    event, expense, other = _setup(db, user)
+    ep = db.query(ExpenseParticipant).filter(
+        ExpenseParticipant.expense_id == expense.id,
+        ExpenseParticipant.user_id == other.id,
+    ).first()
+    ep.weight = Decimal("0.7")
+    db.commit()
+
+    response = auth_client.get(f"/events/{event.id}/expenses/{expense.id}/edit-form")
+    assert f'name="weight_{other.id}"' in response.text
+    assert 'value="0.7"' in response.text

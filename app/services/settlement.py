@@ -6,6 +6,7 @@ from decimal import Decimal, ROUND_HALF_UP
 class ParticipantInput:
     user_id: str
     custom_amount: Decimal | None
+    weight: Decimal | None = None  # 按分比率。None は 1 として扱う
 
 
 @dataclass
@@ -28,17 +29,25 @@ def calculate_settlement(expenses: list[ExpenseInput]) -> list[tuple[str, str, D
 
     for expense in expenses:
         custom = [(p.user_id, p.custom_amount) for p in expense.participants if p.custom_amount is not None]
-        equal_users = [p.user_id for p in expense.participants if p.custom_amount is None]
+        weighted = [
+            (p.user_id, p.weight if p.weight is not None else Decimal(1))
+            for p in expense.participants if p.custom_amount is None
+        ]
+        total_weight = sum((w for _, w in weighted), Decimal(0))
+        if weighted and total_weight <= 0:
+            # 全員の比率が 0 の場合は均等割りにフォールバック
+            weighted = [(uid, Decimal(1)) for uid, _ in weighted]
+            total_weight = Decimal(len(weighted))
 
         custom_total = sum((amt for _, amt in custom), Decimal(0))
-        equal_share = _round((expense.total_amount - custom_total) / len(equal_users)) if equal_users else Decimal(0)
+        remaining = expense.total_amount - custom_total
 
         balances[expense.paid_by] = balances.get(expense.paid_by, Decimal(0)) + expense.total_amount
 
         for uid, amt in custom:
             balances[uid] = balances.get(uid, Decimal(0)) - amt
-        for uid in equal_users:
-            balances[uid] = balances.get(uid, Decimal(0)) - equal_share
+        for uid, w in weighted:
+            balances[uid] = balances.get(uid, Decimal(0)) - _round(remaining * w / total_weight)
 
     creditors = sorted([(uid, bal) for uid, bal in balances.items() if bal > 0], key=lambda x: x[1])
     debtors = sorted([(uid, -bal) for uid, bal in balances.items() if bal < 0], key=lambda x: x[1])
@@ -79,6 +88,7 @@ def apply_settlement(event_id: str, db) -> None:
             ParticipantInput(
                 user_id=p.user_id,
                 custom_amount=p.custom_amount,
+                weight=p.weight,
             )
             for p in exp.participants
         ]

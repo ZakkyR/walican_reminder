@@ -27,6 +27,7 @@ class ExpenseParticipant(Base):
     expense_id: Mapped[str] = mapped_column(String(36), ForeignKey("expenses.id"), primary_key=True)
     user_id: Mapped[str] = mapped_column(String(36), ForeignKey("users.id"), primary_key=True)
     custom_amount: Mapped[Decimal | None] = mapped_column(Numeric(12, 0), nullable=True)
+    weight: Mapped[Decimal | None] = mapped_column(Numeric(6, 2), nullable=True)
 
     expense: Mapped["Expense"] = relationship("Expense", back_populates="participants")
     user: Mapped["User"] = relationship("User")

@@ -19,7 +19,8 @@
       </select>
     </div>
     <div class="form-group">
-      <label>参加者（カスタム金額は空欄で均等割り）</label>
+      <label>参加者</label>
+      <div style="font-size:0.8rem;color:#888;margin-bottom:6px;">金額を入れた人はその額、残りは比率で按分（空欄は比率 1。例: お酒なしの人を 0.7）</div>
       {% for p in participants %}
         <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;">
           <input type="checkbox" name="participant_ids" value="{{ p.id }}" id="p_{{ p.id }}" checked style="width:auto;flex-shrink:0;">
@@ -29,7 +30,8 @@
             <span class="avatar-placeholder">{{ display_names.get(p.id, p.discord_username)[0]|upper }}</span>
           {% endif %}
           <label for="p_{{ p.id }}" style="margin:0;flex:1;">{{ display_names.get(p.id, p.discord_username) }}</label>
-          <input type="number" name="custom_{{ p.id }}" placeholder="金額(円)" style="width:120px;">
+          <input type="number" name="custom_{{ p.id }}" placeholder="金額(円)" style="width:110px;">
+          <input type="number" name="weight_{{ p.id }}" placeholder="比率 1" min="0" max="9999.99" step="0.01" style="width:80px;">
         </div>
       {% endfor %}
     </div>
@@ -58,7 +60,7 @@
         <div class="card-title">{{ expense.title }}</div>
         <div style="font-size:0.85rem;color:#888;">¥{{ "{:,}".format(expense.total_amount|int) }} — 立替: {{ display_names.get(expense.paid_by, expense.payer.discord_username) }}</div>
         <div style="font-size:0.8rem;color:#aaa;">
-          {% for ep in expense.participants %}{{ display_names.get(ep.user.id, ep.user.discord_username) }}{% if ep.custom_amount %}(¥{{ ep.custom_amount|int }}){% endif %}{% if not loop.last %}、{% endif %}{% endfor %}
+          {% for ep in expense.participants %}{{ display_names.get(ep.user.id, ep.user.discord_username) }}{% if ep.custom_amount %}(¥{{ ep.custom_amount|int }}){% endif %}{% if ep.custom_amount is none and ep.weight is not none and ep.weight != 1 %}(×{{ '%g'|format(ep.weight|float) }}){% endif %}{% if not loop.last %}、{% endif %}{% endfor %}
         </div>
       </div>
       {% if event.status.value == "active" %}

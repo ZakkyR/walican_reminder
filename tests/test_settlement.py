@@ -93,3 +93,53 @@ def test_single_payer_excluded_from_participants():
     )]
     result = calculate_settlement(expenses)
     assert result == [("B", "A", Decimal(1000))]
+
+
+def test_weighted_split():
+    # A が 10000 円立替、A・B は比率 1、C（お酒なし）は比率 0.5
+    # 1:1:0.5 → A 4000, B 4000, C 2000
+    expenses = [ExpenseInput(
+        paid_by="A",
+        total_amount=Decimal(10000),
+        participants=[
+            ParticipantInput(user_id="A", custom_amount=None),
+            ParticipantInput(user_id="B", custom_amount=None, weight=Decimal(1)),
+            ParticipantInput(user_id="C", custom_amount=None, weight=Decimal("0.5")),
+        ]
+    )]
+    result = calculate_settlement(expenses)
+    assert len(result) == 2
+    assert ("B", "A", Decimal(4000)) in result
+    assert ("C", "A", Decimal(2000)) in result
+
+
+def test_weighted_split_with_custom_amount():
+    # A が 12000 円立替、D はカスタム 2000 円、残り 10000 円を A:B:C = 2:2:1 で按分
+    expenses = [ExpenseInput(
+        paid_by="A",
+        total_amount=Decimal(12000),
+        participants=[
+            ParticipantInput(user_id="A", custom_amount=None, weight=Decimal(2)),
+            ParticipantInput(user_id="B", custom_amount=None, weight=Decimal(2)),
+            ParticipantInput(user_id="C", custom_amount=None, weight=Decimal(1)),
+            ParticipantInput(user_id="D", custom_amount=Decimal(2000), weight=Decimal(5)),
+        ]
+    )]
+    result = calculate_settlement(expenses)
+    assert len(result) == 3
+    assert ("B", "A", Decimal(4000)) in result
+    assert ("C", "A", Decimal(2000)) in result
+    assert ("D", "A", Decimal(2000)) in result
+
+
+def test_all_zero_weight_falls_back_to_equal_split():
+    expenses = [ExpenseInput(
+        paid_by="A",
+        total_amount=Decimal(10000),
+        participants=[
+            ParticipantInput(user_id="A", custom_amount=None, weight=Decimal(0)),
+            ParticipantInput(user_id="B", custom_amount=None, weight=Decimal(0)),
+        ]
+    )]
+    result = calculate_settlement(expenses)
+    assert result == [("B", "A", Decimal(5000))]

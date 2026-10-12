@@ -16,6 +16,30 @@ from app.services.settlement import apply_settlement
 router = APIRouter(prefix="/events/{event_id}/expenses")
 templates = Jinja2Templates(directory="app/templates")
 
+MAX_WEIGHT = Decimal("9999.99")
+
+
+def _parse_participant_split(form_data, uid: str) -> tuple[Decimal | None, Decimal | None]:
+    """参加者ごとのカスタム金額と按分比率をフォームから取り出す。空欄は None。"""
+    custom_str = form_data.get(f"custom_{uid}", "")
+    custom = None
+    if custom_str:
+        try:
+            custom = Decimal(custom_str)
+        except InvalidOperation:
+            raise HTTPException(status_code=400, detail=f"カスタム金額が無効です: {custom_str}")
+
+    weight_str = form_data.get(f"weight_{uid}", "")
+    weight = None
+    if weight_str:
+        try:
+            weight = Decimal(weight_str)
+            if not weight.is_finite() or weight < 0 or weight > MAX_WEIGHT:
+                raise ValueError
+        except (InvalidOperation, ValueError):
+            raise HTTPException(status_code=400, detail=f"比率が無効です: {weight_str}")
+    return custom, weight
+
 
 @router.post("")
 async def add_expense(
@@ -54,14 +78,8 @@ async def add_expense(
 
     form_data = await request.form()
     for uid in participant_ids:
-        custom_str = form_data.get(f"custom_{uid}", "")
-        custom = None
-        if custom_str:
-            try:
-                custom = Decimal(custom_str)
-            except InvalidOperation:
-                raise HTTPException(status_code=400, detail=f"カスタム金額が無効です: {custom_str}")
-        db.add(ExpenseParticipant(expense_id=expense.id, user_id=uid, custom_amount=custom))
+        custom, weight = _parse_participant_split(form_data, uid)
+        db.add(ExpenseParticipant(expense_id=expense.id, user_id=uid, custom_amount=custom, weight=weight))
 
     db.commit()
     apply_settlement(event_id, db)
@@ -139,12 +157,14 @@ async def edit_expense_form(
     participants = [ep.user for ep in ep_rows]
     display_names = {ep.user_id: ep.display_name or ep.user.discord_username for ep in ep_rows}
     expense_participant_map = {ep.user_id: ep.custom_amount for ep in expense.participants}
+    expense_weight_map = {ep.user_id: ep.weight for ep in expense.participants if ep.weight is not None}
     return templates.TemplateResponse(request, "events/partials/expense_edit_form.html", {
         "event_id": event_id,
         "expense": expense,
         "participants": participants,
         "display_names": display_names,
         "expense_participant_map": expense_participant_map,
+        "expense_weight_map": expense_weight_map,
     })
 
 
@@ -190,14 +210,8 @@ async def update_expense(
     for uid in participant_ids:
         if uid not in valid_ids:
             raise HTTPException(status_code=400, detail=f"参加者 {uid} はイベントのメンバーではありません")
-        custom_str = form_data.get(f"custom_{uid}", "")
-        custom = None
-        if custom_str:
-            try:
-                custom = Decimal(custom_str)
-            except InvalidOperation:
-                raise HTTPException(status_code=400, detail=f"カスタム金額が無効です: {custom_str}")
-        db.add(ExpenseParticipant(expense_id=expense_id, user_id=uid, custom_amount=custom))
+        custom, weight = _parse_participant_split(form_data, uid)
+        db.add(ExpenseParticipant(expense_id=expense_id, user_id=uid, custom_amount=custom, weight=weight))
 
     db.commit()
     apply_settlement(event_id, db)

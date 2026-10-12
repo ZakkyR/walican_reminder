@@ -98,3 +98,57 @@ def test_export_csv(auth_client, db, user):
     assert "タイトル" in text
     assert "交通費" in text
     assert "4000" in text
+
+
+def _create_event_with_three(db, user, prefix):
+    others = [User(discord_id=f"{prefix}{i}", discord_username=f"W{i}") for i in range(2)]
+    db.add_all(others)
+    db.commit()
+    for o in others:
+        db.refresh(o)
+    return _create_event_with_users(db, user, others), others
+
+
+def test_add_expense_with_weight(auth_client, db, user):
+    event, (b, c) = _create_event_with_three(db, user, "w")
+
+    response = auth_client.post(f"/events/{event.id}/expenses", data={
+        "title": "飲み会",
+        "total_amount": "10000",
+        "paid_by": user.id,
+        "participant_ids": [user.id, b.id, c.id],
+        f"weight_{c.id}": "0.5",
+    }, follow_redirects=False)
+    assert response.status_code == 303
+
+    ep = db.query(ExpenseParticipant).filter(ExpenseParticipant.user_id == c.id).first()
+    assert ep.weight == Decimal("0.5")
+    payments = {p.from_user_id: p.amount for p in db.query(Payment).filter(Payment.event_id == event.id)}
+    assert payments == {b.id: Decimal(4000), c.id: Decimal(2000)}
+
+
+def test_add_expense_rejects_negative_weight(auth_client, db, user):
+    event, (b, c) = _create_event_with_three(db, user, "n")
+
+    response = auth_client.post(f"/events/{event.id}/expenses", data={
+        "title": "飲み会",
+        "total_amount": "10000",
+        "paid_by": user.id,
+        "participant_ids": [user.id, b.id, c.id],
+        f"weight_{c.id}": "-1",
+    }, follow_redirects=False)
+    assert response.status_code == 400
+
+
+def test_weight_shown_in_expense_list(auth_client, db, user):
+    event, (b, c) = _create_event_with_three(db, user, "s")
+    auth_client.post(f"/events/{event.id}/expenses", data={
+        "title": "飲み会",
+        "total_amount": "10000",
+        "paid_by": user.id,
+        "participant_ids": [user.id, b.id, c.id],
+        f"weight_{c.id}": "0.5",
+    }, follow_redirects=False)
+
+    response = auth_client.get(f"/events/{event.id}?tab=expenses")
+    assert "×0.5" in response.text
